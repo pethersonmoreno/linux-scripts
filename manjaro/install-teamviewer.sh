@@ -13,3 +13,5 @@ PACKAGE_INSTALL=`ls | grep .tar.xz | grep -v orig`
 sudo pacman -U $PACKAGE_INSTALL
 cd ..
 rm -rf "${PACKAGE_NAME}"
+sudo systemctl enable teamviewerd
+sudo systemctl start teamviewerd
