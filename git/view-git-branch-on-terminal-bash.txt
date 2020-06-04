@@ -1,0 +1,14 @@
+3 ways to load on PS1 current branch on terminal.
+
+Use of show-current 'git branch --show-current' that work in new versions of git:
+PS1="$(echo $PS1 | sed -E 's/\\\$//g')"'\[\033[01;33m\]$(git rev-parse --git-dir > /dev/null 2>&1 && git branch --show-current | sed -E "s/^(.+)$/\(\1\)⚡/g")\[\033[00m\]''\[\033[01;32m\]\$\[\033[00m\] '
+
+Alternative A 'git rev-parse --abbrev-ref HEAD', if first option not work:
+PS1="$(echo $PS1 | sed -E 's/\\\$//g')"'\[\033[01;33m\]$(git rev-parse --git-dir > /dev/null 2>&1 && git rev-parse --abbrev-ref HEAD | sed -E "s/^(.+)$/\(\1\)⚡/g")\[\033[00m\]''\[\033[01;32m\]\$\[\033[00m\] '
+
+Alternative B 'git symbolic-ref --short HEAD', if first and second options not work:
+PS1="$(echo $PS1 | sed -E 's/\\\$//g')"'\[\033[01;33m\]$(git rev-parse --git-dir > /dev/null 2>&1 && git symbolic-ref --short HEAD | sed -E "s/^(.+)$/\(\1\)⚡/g")\[\033[00m\]''\[\033[01;32m\]\$\[\033[00m\] '
+
+
+
+Copy one of these PS1 commands to your ~/.bashrc, it will add the current branch on git of current repository.
