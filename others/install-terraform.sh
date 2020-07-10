@@ -14,5 +14,4 @@ FILE_ZIP="terraform_${VERSION}_linux_amd64.zip"
 curl -L "https://releases.hashicorp.com/terraform/${VERSION}/${FILE_ZIP}" > "/tmp/${FILE_ZIP}"
 unzip "/tmp/${FILE_ZIP}" -d /tmp
 sudo mv /tmp/terraform /usr/local/bin/
-# rm -f /tmp/terraform
 rm "/tmp/${FILE_ZIP}"
