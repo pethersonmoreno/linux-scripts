@@ -6,7 +6,7 @@ if [ "$CURRENT_VERSION" = "$VERSION" ]; then
   echo "Your terraform version is already latest ${VERSION}"
   exit 0
 fi
-if [ ! -z "$var" ]; then
+if [ ! -z "$CURRENT_VERSION" ]; then
   echo "Your terraform current version is ${CURRENT_VERSION}"
 fi
 echo "terraform last version is ${VERSION}"
