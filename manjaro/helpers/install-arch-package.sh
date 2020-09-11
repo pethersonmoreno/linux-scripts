@@ -1,6 +1,14 @@
 #!/bin/bash
 PACKAGE_NAME=$1
-cd /tmp
+TMP_DIRECTORY=/tmp
+if [ $# -gt 1 ]; then
+  TMP_DIRECTORY=$2
+fi
+if [ ! -d "$TMP_DIRECTORY" ]; then
+  echo "Temp Directory \"$TMP_DIRECTORY\" DOES NOT exists!"
+  exit 1
+fi
+cd $TMP_DIRECTORY
 curl "https://aur.archlinux.org/cgit/aur.git/snapshot/${PACKAGE_NAME}.tar.gz" --output "${PACKAGE_NAME}.tar.gz"
 tar -zxvf "${PACKAGE_NAME}.tar.gz"
 cd "${PACKAGE_NAME}"
