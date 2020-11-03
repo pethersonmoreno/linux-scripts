@@ -7,3 +7,4 @@ sudo pacman -S libretro-sameboy # gbc - Game Boy Color
 sudo pacman -S libretro-beetle-psx # psx - Playstation
 sudo pacman -S libretro-beetle-psx-hw
 sudo pacman -S pcsx2
+../helpers/install-arch-package.sh libretro-cap32-git # amstradcpc - Amstrad CPC
