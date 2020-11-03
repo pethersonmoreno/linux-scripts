@@ -8,3 +8,5 @@ sudo pacman -S libretro-beetle-psx # psx - Playstation
 sudo pacman -S libretro-beetle-psx-hw
 sudo pacman -S pcsx2
 ../helpers/install-arch-package.sh libretro-cap32-git # amstradcpc - Amstrad CPC
+sudo pacman -S libretro-desmume # nds - Nintendo DS
+sudo pacman -S libretro-citra # n3ds - Nintendo 3DS
