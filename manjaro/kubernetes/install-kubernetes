@@ -1,0 +1,7 @@
+#!/bin/bash
+./install-cni-plugins
+./install-crictl
+./install-kubeadm
+./install-kubectl
+./install-kubelet
+./configure-kubernetes-path

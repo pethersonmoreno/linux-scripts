@@ -1,0 +1,8 @@
+apiVersion: kubeadm.k8s.io/v1beta2
+kind: ClusterConfiguration
+kubernetesVersion: stable
+controlPlaneEndpoint: "pet-k8s-cluster:6443"
+etcd:
+  external:
+    endpoints:
+    - http://etcd-server:2379

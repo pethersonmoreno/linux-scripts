@@ -1,0 +1,5 @@
+#!/bin/bash
+SERVICE_PATH=pathToProject
+cd $SERVICE_PATH
+eval $(minikube -p minikube docker-env)
+docker build -t localimage/image-name .

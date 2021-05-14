@@ -1,0 +1,53 @@
+#!/bin/bash
+ETCD_VER=v3.2.32
+DOWNLOAD_DIR=/opt/etcd
+
+# choose either URL
+GOOGLE_URL=https://storage.googleapis.com/etcd
+GITHUB_URL=https://github.com/etcd-io/etcd/releases/download
+DOWNLOAD_URL=${GITHUB_URL}
+
+rm -f /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz
+sudo mkdir -p $DOWNLOAD_DIR
+
+curl -L ${DOWNLOAD_URL}/${ETCD_VER}/etcd-${ETCD_VER}-linux-amd64.tar.gz -o /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz
+sudo tar xzvf /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz -C $DOWNLOAD_DIR --strip-components=1
+rm -f /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz
+
+cat <<EOF | sudo tee /usr/lib/sysusers.d/etcd.conf
+# etcd - https://github.com/etcd-io/etcd
+
+#Type  Name  ID  GECOS        Home
+u      etcd  -   "etcd user"  /var/lib/etcd
+EOF
+
+sudo systemd-sysusers
+
+sudo rm -rf /var/lib/etcd
+sudo mkdir -p /var/lib/etcd
+sudo chown etcd /var/lib/etcd
+sudo chmod 700 /var/lib/etcd
+
+cat <<EOF | sudo tee /etc/systemd/system/etcd.service
+[Unit]
+Description=etcd key-value store
+Documentation=https://github.com/etcd-io/etcd
+After=network-online.target local-fs.target remote-fs.target time-sync.target
+Wants=network-online.target local-fs.target remote-fs.target time-sync.target
+
+[Service]
+User=etcd
+Type=notify
+Environment=ETCD_DATA_DIR=/var/lib/etcd
+Environment=ETCD_NAME=%m
+ExecStart=/opt/etcd/etcd
+Restart=always
+RestartSec=10s
+LimitNOFILE=40000
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now etcd.service

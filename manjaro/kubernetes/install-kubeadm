@@ -1,0 +1,7 @@
+#!/bin/bash
+DOWNLOAD_DIR=/opt/kubernetes/bin
+sudo mkdir -p $DOWNLOAD_DIR
+RELEASE="$(curl -sSL https://dl.k8s.io/release/stable.txt)"
+cd $DOWNLOAD_DIR
+sudo curl -L --remote-name-all https://storage.googleapis.com/kubernetes-release/release/${RELEASE}/bin/linux/amd64/kubeadm
+sudo chmod +x kubeadm

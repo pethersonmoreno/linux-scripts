@@ -1,0 +1,14 @@
+#!/bin/bash
+ISTIO_CONFIG_PATH=../
+
+cd $ISTIO_CONFIG_PATH
+kubectl delete -f virtual-service.yml
+kubectl delete -f gateway.yml
+kubectl delete -f service.yml
+kubectl delete -f application.yml
+
+
+kubectl delete ns pet
+
+
+minikube delete --all

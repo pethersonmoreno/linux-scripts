@@ -1,0 +1,24 @@
+#!/bin/bash
+ISTIO_CONFIG_PATH=../
+BIN_PATH_ISTIO_CTL=~/Downloads/istio/istio-1.9.2
+export PATH=$BIN_PATH_ISTIO_CTL/bin:$PATH
+# minikube start --memory=8000 --cpus=4 --kubernetes-version=v1.20.2
+minikube start --kubernetes-version=v1.20.2
+istioctl install -y --set components.egressGateways[0].name=istio-egressgateway --set components.egressGateways[0].enabled=true
+# Uncomment the following line if you need build an image
+# ./testing-build-image
+kubectl label ns default istio-injection=enabled --overwrite
+kubectl create ns pet
+kubectl label ns pet istio-injection=enabled
+
+cd $ISTIO_CONFIG_PATH
+kubectl apply -f application.yml
+kubectl apply -f service.yml
+kubectl apply -f gateway.yml
+kubectl apply -f virtual-service.yml
+
+
+echo "Now run the command to start external IP: minikube tunnel"
+echo "After it, you can run the command to get IP to apply to your hosts file: kubectl -n istio-system get service istio-ingressgateway -o jsonpath='{.spec.clusterIP}'"
+echo "Add or update your hosts file with: {IP}	testing.com"
+echo "After it, you can make get to http://testing.com"

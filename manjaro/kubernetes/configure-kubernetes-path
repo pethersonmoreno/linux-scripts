@@ -1,0 +1,4 @@
+#!/bin/bash
+cat <<EOF | sudo tee /etc/profile.d/kubernetes-bin.sh
+export PATH="/opt/kubernetes/bin:\${PATH}"
+EOF
