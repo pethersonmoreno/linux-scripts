@@ -9,7 +9,7 @@ domainToReplace=`cat PKGBUILD | grep source_x86_64 | sed -E "s/(.*https?:\/\/)([
 regexReplace="s/$domainToReplace/$teamviewerOfficialDomainDownload/"
 sed -i -E $regexReplace PKGBUILD
 makepkg -s
-PACKAGE_INSTALL=`ls | grep .tar.xz | grep -v orig`
+PACKAGE_INSTALL=`ls | grep .tar.zst | grep -v orig`
 sudo pacman -U $PACKAGE_INSTALL
 cd ..
 rm -rf "${PACKAGE_NAME}"
