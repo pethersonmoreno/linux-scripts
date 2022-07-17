@@ -10,7 +10,8 @@ if [ ! -z "$CURRENT_VERSION" ]; then
   echo "Your terraform current version is ${CURRENT_VERSION}"
 fi
 echo "terraform last version is ${VERSION}"
-FILE_ZIP="terraform_${VERSION}_linux_amd64.zip"
+ARCHTECTURE=amd64
+FILE_ZIP="terraform_${VERSION}_linux_${ARCHTECTURE}.zip"
 curl -L "https://releases.hashicorp.com/terraform/${VERSION}/${FILE_ZIP}" > "/tmp/${FILE_ZIP}"
 unzip "/tmp/${FILE_ZIP}" -d /tmp
 sudo mv /tmp/terraform /usr/local/bin/
