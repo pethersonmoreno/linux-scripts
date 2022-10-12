@@ -12,6 +12,7 @@ fi
 cd $TMP_DIRECTORY
 git clone https://github.com/LordAmit/Brightness.git "${PACKAGE_NAME}"
 cd "${PACKAGE_NAME}"
+git checkout 5c223a712e3ca7b2c3be6cbb0049054d9d1acc83
 sudo cp -a src "/opt/${PACKAGE_NAME}"
 cat <<EOF | sudo tee /opt/${PACKAGE_NAME}/${PACKAGE_NAME} 2&>/dev/null
 #!/bin/sh
@@ -39,7 +40,8 @@ sudo cp /opt/${PACKAGE_NAME}/${PACKAGE_NAME}.desktop /usr/share/applications/${P
 cd $TMP_DIRECTORY
 rm -rf "${PACKAGE_NAME}"
 
-# To remove
+# # To remove
+# PACKAGE_NAME=brightness-controller
 # sudo rm -rf /opt/${PACKAGE_NAME}
 # sudo rm /usr/share/pixmaps/brightness-controller.svg
 # sudo rm /usr/local/bin/${PACKAGE_NAME}
