@@ -14,20 +14,16 @@ commandInfo=$(echo "COMMAND NAME
        $0 - get projects from the group
 
 SYNOPSIS
-       $0 [OPTION]... GROUP_PATH
-       $0 [OPTION]... --id GROUP_ID
+       $0 [OPTION]... GROUP
 
 PARAMETERS
-       GROUP_PATH [required when doesn't have option --id]
-              group full path, it is used to get all projects in the group
-
-       GROUP_ID [required when has option --id]
-              group id, it is used to get all projects in the group
+       GROUP [required]
+              if it is a number, then it is the group id, it is used to get all projects in the group
+              or user id, it is used to get all projects in user namespace
+              but if it is not a number, then it is the group full path, it is used to get all projects in the group
+              or username, it is used to get all projects in user namespace
 
 OPTIONS
-       --id
-              change parameter GROUP_PATH to GROUP_ID
-
        --help
               display this help and exit
 
@@ -63,13 +59,8 @@ if [ -z ${GITLAB_TOKEN+x} ]; then
     msgErrorItem="Variable GITLAB_TOKEN is required"
     errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
 fi
-if [ "$1" == "--id" ]; then
-    if [ -z ${2+x} ]; then
-        msgErrorItem="Parameter GROUP_ID is required"
-        errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
-    fi
-elif [ -z ${1+x} ]; then
-    msgErrorItem="Parameter GROUP_PATH is required"
+if [ -z ${1+x} ]; then
+    msgErrorItem="Parameter GROUP is required"
     errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
 fi
 if [ "$errorParameters" != "" ]; then
@@ -87,14 +78,17 @@ if [ -z ${EXPR_GET_PROJECTS_JSON+x} ]; then
     export EXPR_GET_PROJECTS_JSON=$DEFAULT_EXPR_GET_PROJECTS_JSON
 fi
 
-if [ "$1" == "--id" ]; then
+# Verify if parameter is number, then it is ID, or just full name
+if [ "$((( $1 )) 2>/dev/null && echo $? || echo $?)" -eq 0 ]; then
     SEARCH_BY="ID"
-    GROUP_ID="$2"
+    GROUP_ID="$1"
+    PATH_GROUP_PARAM="$GROUP_ID"
 else
     SEARCH_BY="FULL_PATH"
     # Get group by group full path
     GROUP_FULL_PATH="$1"
     GROUP_FULL_PATH_PARSED=$(echo "$GROUP_FULL_PATH" | sed -E "s/\//%2F/g")
+    PATH_GROUP_PARAM="$GROUP_FULL_PATH_PARSED"
 fi
 
 # Get all projects in the group
@@ -105,22 +99,12 @@ page_empty=false
 while [ $page_empty != true ]; do
     page=$(($page+1))
 
-    # Get projects in the group in the current page
-    if [ "$SEARCH_BY" == "ID" ]; then
-        REQUEST_URL="https://gitlab.com/api/v4/groups/${GROUP_ID}/projects?per_page=$per_page&page=$page"
-    fi
-    if [ "$SEARCH_BY" == "FULL_PATH" ]; then
-        REQUEST_URL="https://gitlab.com/api/v4/groups/${GROUP_FULL_PATH_PARSED}/projects?per_page=$per_page&page=$page"
-    fi
+    # Get projects in the group/user in the current page
+    REQUEST_URL="https://gitlab.com/api/v4/groups/${PATH_GROUP_PARAM}/projects?per_page=$per_page&page=$page"
     RESULT=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "${REQUEST_URL}")
     # If failed try get projects in user namespace
     if [ $? -ne 0 ]; then
-        if [ "$SEARCH_BY" == "ID" ]; then
-            REQUEST_URL="https://gitlab.com/api/v4/users/${GROUP_ID}/projects?per_page=$per_page&page=$page"
-        fi
-        if [ "$SEARCH_BY" == "FULL_PATH" ]; then
-            REQUEST_URL="https://gitlab.com/api/v4/users/${GROUP_FULL_PATH_PARSED}/projects?per_page=$per_page&page=$page"
-        fi
+        REQUEST_URL="https://gitlab.com/api/v4/users/${PATH_GROUP_PARAM}/projects?per_page=$per_page&page=$page"
         RESULT=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "${REQUEST_URL}")
         if [ $? -ne 0 ]; then
             echo -e "Error: failed request to get projects in group and project"

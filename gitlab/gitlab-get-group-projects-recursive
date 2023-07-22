@@ -9,19 +9,23 @@ fi
 
 # Default values
 DEFAULT_EXPR_GET_GROUP_JSON=".|{id,name,full_path}"
-DEFAULT_EXPR_GET_USER_JSON=".[]|{id,name,full_path:.username}"
+DEFAULT_EXPR_GET_USER_JSON=".|{id,name,full_path:.username}"
 DEFAULT_EXPR_GET_SUBGROUPS_JSON=".[]|{id,name,full_path}"
 DEFAULT_EXPR_GET_PROJECTS_JSON=".[]|{id,path_with_namespace,ssh_url_to_repo,web_url}"
 commandInfo=$(echo "COMMAND NAME
        $0 - get projects from the group including its subgroups recursively
 
 SYNOPSIS
-       $0 [OPTION]... GROUP_PATH
+       $0 [OPTION]... GROUP
 
 PARAMETERS
-       GROUP_PATH [required]
-              initial group full path, it is used to get all projects in the group, get all projects in this initial
-              group and in its subgroups (recursive)
+       GROUP [required]
+              if it is a number, then it is the group id, it is used to get all projects in the group
+              including projects in its subgroups (recursive)
+              or user id, it is used to get all projects in user namespace
+              but if it is not a number, then it is the group full path, it is used to get all projects in the group
+              including projects in its subgroups (recursive)
+              or username, it is used to get all projects in user namespace
 
 OPTIONS
        --help
@@ -71,7 +75,7 @@ if [ -z ${GITLAB_TOKEN+x} ]; then
     errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
 fi
 if [ -z ${1+x} ]; then
-    msgErrorItem="Parameter GROUP_PATH is required"
+    msgErrorItem="Parameter GROUP is required"
     errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
 fi
 if [ "$errorParameters" != "" ]; then
@@ -98,31 +102,47 @@ fi
 PENDING_GROUP_FULL_PATH="$1"
 RESULT_ALL="[]"
 while [ "$PENDING_GROUP_FULL_PATH" != "" ]; do
-    # Get next group full path and remove it from pending
-    GROUP_FULL_PATH=$(echo "$PENDING_GROUP_FULL_PATH" | sed -E "s/^([^ ]+)( .+)?/\1/")
+    GROUP_PARAM=$(echo "$PENDING_GROUP_FULL_PATH" | sed -E "s/^([^ ]+)( .+)?/\1/")
     PENDING_GROUP_FULL_PATH=$(echo "$PENDING_GROUP_FULL_PATH" | sed -E "s/^[^ ]+ ?//")
-    GROUP_FULL_PATH_PARSED=$(echo "$GROUP_FULL_PATH" | sed -E "s/\//%2F/g")
+    if [ "$((( $GROUP_PARAM )) 2>/dev/null && echo $? || echo $?)" -eq 0 ]; then
+        SEARCH_BY="ID"
+        GROUP_ID="$GROUP_PARAM"
+        PATH_GROUP_PARAM="$GROUP_ID"
+    else
+        SEARCH_BY="FULL_PATH"
+        # Get group by group full path
+        GROUP_FULL_PATH="$GROUP_PARAM"
+        GROUP_FULL_PATH_PARSED=$(echo "$GROUP_FULL_PATH" | sed -E "s/\//%2F/g")
+        PATH_GROUP_PARAM="$GROUP_FULL_PATH_PARSED"
+    fi
 
     # Get group data detail
     GROUP_TYPE=GROUP
-    GROUP_REQUEST_URL="https://gitlab.com/api/v4/groups/${GROUP_FULL_PATH_PARSED}"
+    GROUP_REQUEST_URL="https://gitlab.com/api/v4/groups/${PATH_GROUP_PARAM}"
     GROUP_DATA=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "${GROUP_REQUEST_URL}")
     if [ $? -eq 0 ]; then
         GROUP_DATA=$(echo "$GROUP_DATA" | jq "$EXPR_GET_GROUP_JSON")
     else
         # If failed try get user data detail instead of group detail
         GROUP_TYPE=USER
-        GROUP_REQUEST_URL="https://gitlab.com/api/v4/users?username=${GROUP_FULL_PATH_PARSED}"
+        if [ "$SEARCH_BY" == "ID" ]; then
+            GROUP_REQUEST_URL="https://gitlab.com/api/v4/users/${PATH_GROUP_PARAM}"
+        elif [ "$SEARCH_BY" == "FULL_PATH" ]; then
+            GROUP_REQUEST_URL="https://gitlab.com/api/v4/users?username=${PATH_GROUP_PARAM}"
+        fi
         GROUP_DATA=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "${GROUP_REQUEST_URL}")
         if [ $? -ne 0 ]; then
             echo -e "Error: failed request to get group detail and project detail"
             exit 1
         fi
+        if [ "$SEARCH_BY" == "FULL_PATH" ]; then
+            GROUP_DATA=$(echo "$GROUP_DATA" | jq ".[]")
+        fi
         GROUP_DATA=$(echo "$GROUP_DATA" | jq "$EXPR_GET_USER_JSON")
     fi
-    
+
     GROUP_ID=$(echo "$GROUP_DATA" | jq -r ".id")
-    RESULT=$(gitlab-get-group-projects --id "$GROUP_ID")
+    RESULT=$(gitlab-get-group-projects "$GROUP_ID")
     RESULT_ALL=$((echo "$RESULT_ALL" ; echo "$RESULT") | jq '. + input')
 
     if [ "$GROUP_TYPE" == "GROUP" ]; then
