@@ -9,6 +9,7 @@ fi
 
 # Default values
 DEFAULT_EXPR_GET_GROUP_JSON=".|{id,name,full_path}"
+DEFAULT_EXPR_GET_USER_JSON=".[]|{id,name,full_path:.username}"
 DEFAULT_EXPR_GET_SUBGROUPS_JSON=".[]|{id,name,full_path}"
 DEFAULT_EXPR_GET_PROJECTS_JSON=".[]|{id,path_with_namespace,ssh_url_to_repo,web_url}"
 commandInfo=$(echo "COMMAND NAME
@@ -37,6 +38,11 @@ VARIABLES
               jq filter applied in group to get only specified fields
               it needs the fields id and full_path
               default value = \"${DEFAULT_EXPR_GET_GROUP_JSON}\"
+
+       EXPR_GET_USER_JSON [optional]
+              jq filter applied in user to get only specified fields
+              it needs the fields id and full_path
+              default value = \"${DEFAULT_EXPR_GET_USER_JSON}\"
 
        EXPR_GET_SUBGROUPS_JSON [optional]
               jq filter applied in subgroup list to get only specified fields
@@ -79,6 +85,9 @@ fi
 if [ -z ${EXPR_GET_GROUP_JSON+x} ]; then
     export EXPR_GET_GROUP_JSON=$DEFAULT_EXPR_GET_GROUP_JSON
 fi
+if [ -z ${EXPR_GET_USER_JSON+x} ]; then
+    export EXPR_GET_USER_JSON=$DEFAULT_EXPR_GET_USER_JSON
+fi
 if [ -z ${EXPR_GET_SUBGROUPS_JSON+x} ]; then
     export EXPR_GET_SUBGROUPS_JSON=$DEFAULT_EXPR_GET_SUBGROUPS_JSON
 fi
@@ -95,18 +104,35 @@ while [ "$PENDING_GROUP_FULL_PATH" != "" ]; do
     GROUP_FULL_PATH_PARSED=$(echo "$GROUP_FULL_PATH" | sed -E "s/\//%2F/g")
 
     # Get group data detail
-    GROUP_DATA=$(curl -s --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/groups/${GROUP_FULL_PATH_PARSED}" | jq "$EXPR_GET_GROUP_JSON")
+    GROUP_TYPE=GROUP
+    GROUP_REQUEST_URL="https://gitlab.com/api/v4/groups/${GROUP_FULL_PATH_PARSED}"
+    GROUP_DATA=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "${GROUP_REQUEST_URL}")
+    if [ $? -eq 0 ]; then
+        GROUP_DATA=$(echo "$GROUP_DATA" | jq "$EXPR_GET_GROUP_JSON")
+    else
+        # If failed try get user data detail instead of group detail
+        GROUP_TYPE=USER
+        GROUP_REQUEST_URL="https://gitlab.com/api/v4/users?username=${GROUP_FULL_PATH_PARSED}"
+        GROUP_DATA=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "${GROUP_REQUEST_URL}")
+        if [ $? -ne 0 ]; then
+            echo -e "Error: failed request to get group detail and project detail"
+            exit 1
+        fi
+        GROUP_DATA=$(echo "$GROUP_DATA" | jq "$EXPR_GET_USER_JSON")
+    fi
+    
     GROUP_ID=$(echo "$GROUP_DATA" | jq -r ".id")
-
     RESULT=$(gitlab-get-group-projects --id "$GROUP_ID")
     RESULT_ALL=$((echo "$RESULT_ALL" ; echo "$RESULT") | jq '. + input')
 
-    # Get subgroups of the current group, it will be used to get projects in this group
-    GROUP_SUBGROUPS=$(curl -s --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/groups/${GROUP_ID}/subgroups" | jq "$EXPR_GET_SUBGROUPS_JSON" | jq --slurp '.')
-    # If found at least one subgroup, add it to pending groups to get projects
-    GROUP_SUBGROUPS_FULL_PATHS=$(echo "$GROUP_SUBGROUPS" | jq -r "[.[].full_path]|join(\" \")")
-    if [ "$GROUP_SUBGROUPS_FULL_PATHS" != "" ]; then
-        PENDING_GROUP_FULL_PATH=$(echo "$PENDING_GROUP_FULL_PATH $GROUP_SUBGROUPS_FULL_PATHS" | sed -E "s/^[ ]+//")
+    if [ "$GROUP_TYPE" == "GROUP" ]; then
+        # Get subgroups of the current group, it will be used to get projects in this group
+        GROUP_SUBGROUPS=$(curl -s --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/groups/${GROUP_ID}/subgroups" | jq "$EXPR_GET_SUBGROUPS_JSON" | jq --slurp '.')
+        # If found at least one subgroup, add it to pending groups to get projects
+        GROUP_SUBGROUPS_FULL_PATHS=$(echo "$GROUP_SUBGROUPS" | jq -r "[.[].full_path]|join(\" \")")
+        if [ "$GROUP_SUBGROUPS_FULL_PATHS" != "" ]; then
+            PENDING_GROUP_FULL_PATH=$(echo "$PENDING_GROUP_FULL_PATH $GROUP_SUBGROUPS_FULL_PATHS" | sed -E "s/^[ ]+//")
+        fi
     fi
 done
 # Just format json to view it in terminal

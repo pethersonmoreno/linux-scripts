@@ -95,10 +95,6 @@ else
     # Get group by group full path
     GROUP_FULL_PATH="$1"
     GROUP_FULL_PATH_PARSED=$(echo "$GROUP_FULL_PATH" | sed -E "s/\//%2F/g")
-
-    # # Get group data detail
-    # GROUP_DATA=$(curl -s --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/groups/${GROUP_FULL_PATH_PARSED}" | jq "$EXPR_GET_GROUP_JSON")
-    # GROUP_ID=$(echo "$GROUP_DATA" | jq -r ".id")
 fi
 
 # Get all projects in the group
@@ -111,11 +107,28 @@ while [ $page_empty != true ]; do
 
     # Get projects in the group in the current page
     if [ "$SEARCH_BY" == "ID" ]; then
-        RESULT=$(curl -s --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/groups/${GROUP_ID}/projects?per_page=$per_page&page=$page" | jq "$EXPR_GET_PROJECTS_JSON" | jq --slurp '.')
+        REQUEST_URL="https://gitlab.com/api/v4/groups/${GROUP_ID}/projects?per_page=$per_page&page=$page"
     fi
     if [ "$SEARCH_BY" == "FULL_PATH" ]; then
-        RESULT=$(curl -s --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/groups/${GROUP_FULL_PATH_PARSED}/projects?per_page=$per_page&page=$page" | jq "$EXPR_GET_PROJECTS_JSON" | jq --slurp '.')
+        REQUEST_URL="https://gitlab.com/api/v4/groups/${GROUP_FULL_PATH_PARSED}/projects?per_page=$per_page&page=$page"
     fi
+    RESULT=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "${REQUEST_URL}")
+    # If failed try get projects in user namespace
+    if [ $? -ne 0 ]; then
+        if [ "$SEARCH_BY" == "ID" ]; then
+            REQUEST_URL="https://gitlab.com/api/v4/users/${GROUP_ID}/projects?per_page=$per_page&page=$page"
+        fi
+        if [ "$SEARCH_BY" == "FULL_PATH" ]; then
+            REQUEST_URL="https://gitlab.com/api/v4/users/${GROUP_FULL_PATH_PARSED}/projects?per_page=$per_page&page=$page"
+        fi
+        RESULT=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "${REQUEST_URL}")
+        if [ $? -ne 0 ]; then
+            echo -e "Error: failed request to get projects in group and project"
+            exit 1
+        fi
+    fi
+
+    RESULT=$(echo "$RESULT" | jq "$EXPR_GET_PROJECTS_JSON" | jq --slurp '.')
     
     RESULT_ALL=$((echo "$RESULT_ALL" ; echo "$RESULT") | jq '. + input')
 
