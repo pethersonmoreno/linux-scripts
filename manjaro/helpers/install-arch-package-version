@@ -1,0 +1,33 @@
+#!/bin/bash
+AUR_PACKAGE=$1
+TARGET_VERSION=$2
+
+DIR_INSTALL="/tmp/install-${AUR_PACKAGE}"
+rm -rf "$DIR_INSTALL"
+git clone "https://aur.archlinux.org/${AUR_PACKAGE}.git" "$DIR_INSTALL"
+cd "$DIR_INSTALL"
+NOT_FOUND_TARGET_VERSION=false
+CURRENT_VERSION=$(cat .SRCINFO | grep -E "(pkgver|pkgrel) = " | sed -E "s/^[ \t]*(pkgver|pkgrel)[ \t]*=[ \t]*//" | sed -E "s/[ \t]*$//" | tr "\n" "-" | sed -E "s/-$//")
+while [ "$CURRENT_VERSION" != "$TARGET_VERSION" ]; do
+    COMMIT=$(git log --format="%H" --skip 1 -n 1)
+    if [ "$COMMIT" == "" ]; then
+        NOT_FOUND_TARGET_VERSION=true
+        break
+    fi
+    git checkout -q $COMMIT
+    CURRENT_VERSION=$(cat .SRCINFO | grep -E "(pkgver|pkgrel) = " | sed -E "s/^[ \t]*(pkgver|pkgrel)[ \t]*=[ \t]*//" | sed -E "s/[ \t]*$//" | tr "\n" "-" | sed -E "s/-$//")
+done
+
+if [ "$NOT_FOUND_TARGET_VERSION" == "false" ]; then
+    makepkg -s
+    PACKAGE_INSTALL=$(ls | grep -E '\.tar\.xz|\.tar\.zst' | grep -v orig)
+    sudo pacman -U $PACKAGE_INSTALL
+fi
+
+cd /tmp
+rm -rf "$DIR_INSTALL"
+
+if [ "$NOT_FOUND_TARGET_VERSION" == "true" ]; then
+    echo -e "Error: target version not found"
+    exit 1
+fi
