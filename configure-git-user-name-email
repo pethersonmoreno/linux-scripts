@@ -1,0 +1,3 @@
+#!/bin/sh
+git config user.email "pethermoreno@gmail.com"
+git config user.name "Petherson Moreno"
