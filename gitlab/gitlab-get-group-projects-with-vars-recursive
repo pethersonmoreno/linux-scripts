@@ -109,7 +109,7 @@ while [ $PROJECTS_INDEX -lt $PROJECTS_LENGTH ]; do
     PROJECT_ID=$(echo "$PROJECT_ITEM" | jq -r ".id")
 
     # Get project variables
-    PROJECT_VARIABLES_JSON=$(curl -s --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/projects/${PROJECT_ID}/variables")
+    PROJECT_VARIABLES_JSON=$(gitlab-get-project-vars "${PROJECT_ID}")
     PROJECT_VARIABLES_LENGTH=$(echo "$PROJECT_VARIABLES_JSON" | jq -r ".|length")
 
     # If project has variables add the project with its variables to result
