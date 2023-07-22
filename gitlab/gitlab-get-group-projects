@@ -11,7 +11,7 @@ fi
 DEFAULT_EXPR_GET_PROJECTS_JSON=".[]|{id,path_with_namespace,ssh_url_to_repo,web_url}"
 DEFAULT_EXPR_GET_GROUP_JSON=".|{id,name,full_path}"
 commandInfo=$(echo "COMMAND NAME
-       $0 - get projects from the group
+       $0 - get all projects from the group
 
 SYNOPSIS
        $0 [OPTION]... GROUP

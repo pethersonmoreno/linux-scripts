@@ -13,7 +13,7 @@ DEFAULT_EXPR_GET_USER_JSON=".|{id,name,full_path:.username}"
 DEFAULT_EXPR_GET_SUBGROUPS_JSON=".[]|{id,name,full_path}"
 DEFAULT_EXPR_GET_PROJECTS_JSON=".[]|{id,path_with_namespace,ssh_url_to_repo,web_url}"
 commandInfo=$(echo "COMMAND NAME
-       $0 - get projects from the group including its subgroups recursively
+       $0 - get all projects from the group and in its subgroups recursively
 
 SYNOPSIS
        $0 [OPTION]... GROUP

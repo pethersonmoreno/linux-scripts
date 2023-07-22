@@ -8,7 +8,7 @@ if [ "$ADD_TO_PATH" == "true" ]; then
 fi
 
 commandInfo=$(echo "COMMAND NAME
-       $0 - get all projects with variables in the group and in its subgroups (recursive)
+       $0 - get all projects with variables from the group and in its subgroups recursively
 
 SYNOPSIS
        $0 [OPTION]... GROUP
