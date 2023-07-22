@@ -1,0 +1,113 @@
+#!/bin/sh
+
+# If script dir is not in PATH, add it
+SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )")
+echo "$PATH" | sed -E "s/:/\n/g" | grep -E "^${SCRIPT_DIR}$" && ADD_TO_PATH=false || ADD_TO_PATH=true
+if [ "$ADD_TO_PATH" == "true" ]; then
+    export PATH="${SCRIPT_DIR}:${PATH}"
+fi
+
+# Default values
+DEFAULT_EXPR_GET_GROUP_JSON=".|{id,name,full_path}"
+DEFAULT_EXPR_GET_SUBGROUPS_JSON=".[]|{id,name,full_path}"
+DEFAULT_EXPR_GET_PROJECTS_JSON=".[]|{id,path_with_namespace,ssh_url_to_repo,web_url}"
+commandInfo=$(echo "COMMAND NAME
+       $0 - get projects from the group including its subgroups recursively
+
+SYNOPSIS
+       $0 [OPTION]... GROUP_PATH
+
+PARAMETERS
+       GROUP_PATH [required]
+              initial group full path, it is used to get all projects in the group, get all projects in this initial
+              group and in its subgroups (recursive)
+
+OPTIONS
+       --help
+              display this help and exit
+
+       --man
+              display this help with less, like command man, then exit
+
+VARIABLES
+       GITLAB_TOKEN [required]
+              a gitlab token used to iterate with Gitlab API endpoints
+
+       EXPR_GET_GROUP_JSON [optional]
+              jq filter applied in group to get only specified fields
+              it needs the fields id and full_path
+              default value = \"${DEFAULT_EXPR_GET_GROUP_JSON}\"
+
+       EXPR_GET_SUBGROUPS_JSON [optional]
+              jq filter applied in subgroup list to get only specified fields
+              it needs the fields id and full_path
+              default value = \"${DEFAULT_EXPR_GET_SUBGROUPS_JSON}\"
+
+       EXPR_GET_PROJECTS_JSON [optional]
+              jq filter applied in project list to get only specified fields
+              default value = \"${DEFAULT_EXPR_GET_PROJECTS_JSON}\"\n")
+
+
+if [ "$1" == "--help" ]; then
+    echo -e "${commandInfo}"
+    exit 0
+fi
+
+if [ "$1" == "--man" ]; then
+    echo -e "${commandInfo}" | less
+    exit 0
+fi
+
+# Verify required variables and parameters
+errorParameters=""
+if [ -z ${GITLAB_TOKEN+x} ]; then
+    msgErrorItem="Variable GITLAB_TOKEN is required"
+    errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
+fi
+if [ -z ${1+x} ]; then
+    msgErrorItem="Parameter GROUP_PATH is required"
+    errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
+fi
+if [ "$errorParameters" != "" ]; then
+    errorParameters=$(echo "$errorParameters" | sed -E "s/^\\\n//")
+    echo -e "Errors:\n$(echo -e "$errorParameters" | sed -E "s/^/ - /g")"
+    echo -e "\nTry '$0 --help' or '$0 --man' for more information."
+    exit 1
+fi
+
+# Getting default values to variables
+if [ -z ${EXPR_GET_GROUP_JSON+x} ]; then
+    export EXPR_GET_GROUP_JSON=$DEFAULT_EXPR_GET_GROUP_JSON
+fi
+if [ -z ${EXPR_GET_SUBGROUPS_JSON+x} ]; then
+    export EXPR_GET_SUBGROUPS_JSON=$DEFAULT_EXPR_GET_SUBGROUPS_JSON
+fi
+if [ -z ${EXPR_GET_PROJECTS_JSON+x} ]; then
+    export EXPR_GET_PROJECTS_JSON=$DEFAULT_EXPR_GET_PROJECTS_JSON
+fi
+# Get all projects in the group and in its groups
+PENDING_GROUP_FULL_PATH="$1"
+RESULT_ALL="[]"
+while [ "$PENDING_GROUP_FULL_PATH" != "" ]; do
+    # Get next group full path and remove it from pending
+    GROUP_FULL_PATH=$(echo "$PENDING_GROUP_FULL_PATH" | sed -E "s/^([^ ]+)( .+)?/\1/")
+    PENDING_GROUP_FULL_PATH=$(echo "$PENDING_GROUP_FULL_PATH" | sed -E "s/^[^ ]+ ?//")
+    GROUP_FULL_PATH_PARSED=$(echo "$GROUP_FULL_PATH" | sed -E "s/\//%2F/g")
+
+    # Get group data detail
+    GROUP_DATA=$(curl -s --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/groups/${GROUP_FULL_PATH_PARSED}" | jq "$EXPR_GET_GROUP_JSON")
+    GROUP_ID=$(echo "$GROUP_DATA" | jq -r ".id")
+
+    RESULT=$(gitlab-get-group-projects --id "$GROUP_ID")
+    RESULT_ALL=$((echo "$RESULT_ALL" ; echo "$RESULT") | jq '. + input')
+
+    # Get subgroups of the current group, it will be used to get projects in this group
+    GROUP_SUBGROUPS=$(curl -s --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/groups/${GROUP_ID}/subgroups" | jq "$EXPR_GET_SUBGROUPS_JSON" | jq --slurp '.')
+    # If found at least one subgroup, add it to pending groups to get projects
+    GROUP_SUBGROUPS_FULL_PATHS=$(echo "$GROUP_SUBGROUPS" | jq -r "[.[].full_path]|join(\" \")")
+    if [ "$GROUP_SUBGROUPS_FULL_PATHS" != "" ]; then
+        PENDING_GROUP_FULL_PATH=$(echo "$PENDING_GROUP_FULL_PATH $GROUP_SUBGROUPS_FULL_PATHS" | sed -E "s/^[ ]+//")
+    fi
+done
+# Just format json to view it in terminal
+echo "$RESULT_ALL" | jq .

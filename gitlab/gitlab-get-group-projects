@@ -1,0 +1,130 @@
+#!/bin/sh
+
+# If script dir is not in PATH, add it
+SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )")
+echo "$PATH" | sed -E "s/:/\n/g" | grep -E "^${SCRIPT_DIR}$" && ADD_TO_PATH=false || ADD_TO_PATH=true
+if [ "$ADD_TO_PATH" == "true" ]; then
+    export PATH="${SCRIPT_DIR}:${PATH}"
+fi
+
+# Default values
+DEFAULT_EXPR_GET_PROJECTS_JSON=".[]|{id,path_with_namespace,ssh_url_to_repo,web_url}"
+DEFAULT_EXPR_GET_GROUP_JSON=".|{id,name,full_path}"
+commandInfo=$(echo "COMMAND NAME
+       $0 - get projects from the group
+
+SYNOPSIS
+       $0 [OPTION]... GROUP_PATH
+       $0 [OPTION]... --id GROUP_ID
+
+PARAMETERS
+       GROUP_PATH [required when doesn't have option --id]
+              group full path, it is used to get all projects in the group
+
+       GROUP_ID [required when has option --id]
+              group id, it is used to get all projects in the group
+
+OPTIONS
+       --id
+              change parameter GROUP_PATH to GROUP_ID
+
+       --help
+              display this help and exit
+
+       --man
+              display this help with less, like command man, then exit
+
+VARIABLES
+       GITLAB_TOKEN [required]
+              a gitlab token used to iterate with Gitlab API endpoints
+
+       EXPR_GET_GROUP_JSON [optional]
+              jq filter applied in group to get only specified fields
+              it needs the fields id and full_path
+              default value = \"${DEFAULT_EXPR_GET_GROUP_JSON}\"
+
+       EXPR_GET_PROJECTS_JSON [optional]
+              jq filter applied in project list to get only specified fields
+              default value = \"${DEFAULT_EXPR_GET_PROJECTS_JSON}\"\n")
+
+if [ "$1" == "--help" ]; then
+    echo -e "${commandInfo}"
+    exit 0
+fi
+
+if [ "$1" == "--man" ]; then
+    echo -e "${commandInfo}" | less
+    exit 0
+fi
+
+# Verify required variables and parameters
+errorParameters=""
+if [ -z ${GITLAB_TOKEN+x} ]; then
+    msgErrorItem="Variable GITLAB_TOKEN is required"
+    errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
+fi
+if [ "$1" == "--id" ]; then
+    if [ -z ${2+x} ]; then
+        msgErrorItem="Parameter GROUP_ID is required"
+        errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
+    fi
+elif [ -z ${1+x} ]; then
+    msgErrorItem="Parameter GROUP_PATH is required"
+    errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
+fi
+if [ "$errorParameters" != "" ]; then
+    errorParameters=$(echo "$errorParameters" | sed -E "s/^\\\n//")
+    echo -e "Errors:\n$(echo -e "$errorParameters" | sed -E "s/^/ - /g")"
+    echo -e "\nTry '$0 --help' or '$0 --man' for more information."
+    exit 1
+fi
+
+# Getting default values to variables
+if [ -z ${EXPR_GET_GROUP_JSON+x} ]; then
+    export EXPR_GET_GROUP_JSON=$DEFAULT_EXPR_GET_GROUP_JSON
+fi
+if [ -z ${EXPR_GET_PROJECTS_JSON+x} ]; then
+    export EXPR_GET_PROJECTS_JSON=$DEFAULT_EXPR_GET_PROJECTS_JSON
+fi
+
+if [ "$1" == "--id" ]; then
+    SEARCH_BY="ID"
+    GROUP_ID="$2"
+else
+    SEARCH_BY="FULL_PATH"
+    # Get group by group full path
+    GROUP_FULL_PATH="$1"
+    GROUP_FULL_PATH_PARSED=$(echo "$GROUP_FULL_PATH" | sed -E "s/\//%2F/g")
+
+    # # Get group data detail
+    # GROUP_DATA=$(curl -s --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/groups/${GROUP_FULL_PATH_PARSED}" | jq "$EXPR_GET_GROUP_JSON")
+    # GROUP_ID=$(echo "$GROUP_DATA" | jq -r ".id")
+fi
+
+# Get all projects in the group
+RESULT_ALL="[]"
+per_page=1000
+page=0
+page_empty=false
+while [ $page_empty != true ]; do
+    page=$(($page+1))
+
+    # Get projects in the group in the current page
+    if [ "$SEARCH_BY" == "ID" ]; then
+        RESULT=$(curl -s --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/groups/${GROUP_ID}/projects?per_page=$per_page&page=$page" | jq "$EXPR_GET_PROJECTS_JSON" | jq --slurp '.')
+    fi
+    if [ "$SEARCH_BY" == "FULL_PATH" ]; then
+        RESULT=$(curl -s --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/groups/${GROUP_FULL_PATH_PARSED}/projects?per_page=$per_page&page=$page" | jq "$EXPR_GET_PROJECTS_JSON" | jq --slurp '.')
+    fi
+    
+    RESULT_ALL=$((echo "$RESULT_ALL" ; echo "$RESULT") | jq '. + input')
+
+    # Verify if the current page doesn't have projects
+    RESULT_LENGTH=$(echo "$RESULT" | jq ".|length")
+    if [[ $RESULT_LENGTH -eq 0 ]]; then
+        page_empty=true
+    fi
+done
+
+# Just format json to view it in terminal
+echo "$RESULT_ALL" | jq .
