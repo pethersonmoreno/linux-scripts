@@ -1,0 +1,115 @@
+#!/bin/bash
+
+# If script dir is not in PATH, add it
+SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )")
+echo "$PATH" | sed -E "s/:/\n/g" | grep -E "^${SCRIPT_DIR}$" > /dev/null && ADD_TO_PATH=false || ADD_TO_PATH=true
+if [ "$ADD_TO_PATH" == "true" ]; then
+    export PATH="${SCRIPT_DIR}:${PATH}"
+fi
+
+commandInfo=$(echo "COMMAND NAME
+       $0 - get all projects with variables in the group and in its subgroups (recursive)
+
+SYNOPSIS
+       $0 [OPTION]... GROUP
+
+PARAMETERS
+       GROUP [required]
+              if it is a number, then it is the group id, it is used to get all projects in the group
+              including projects in its subgroups (recursive)
+              or user id, it is used to get all projects in user namespace
+              but if it is not a number, then it is the group full path, it is used to get all projects in the group
+              including projects in its subgroups (recursive)
+              or username, it is used to get all projects in user namespace
+
+OPTIONS
+       --help
+              display this help and exit
+
+       --man
+              display this help with less, like command man, then exit
+
+VARIABLES
+       GITLAB_TOKEN [required]
+              a gitlab token used to iterate with Gitlab API endpoints
+
+       EXPR_GET_GROUP_JSON [optional]
+              jq filter applied in group to get only specified fields
+              it needs the fields id and full_path
+              default value = \"${DEFAULT_EXPR_GET_GROUP_JSON}\"
+
+       EXPR_GET_USER_JSON [optional]
+              jq filter applied in user to get only specified fields
+              it needs the fields id and full_path
+              default value = \"${DEFAULT_EXPR_GET_USER_JSON}\"
+
+       EXPR_GET_SUBGROUPS_JSON [optional]
+              jq filter applied in subgroup list to get only specified fields
+              it needs the fields id and full_path
+              default value = \"${DEFAULT_EXPR_GET_SUBGROUPS_JSON}\"
+
+       EXPR_GET_PROJECTS_JSON [optional]
+              jq filter applied in project list to get only specified fields
+              default value = \"${DEFAULT_EXPR_GET_PROJECTS_JSON}\"\n")
+
+
+if [ "$1" == "--help" ]; then
+    echo -e "${commandInfo}"
+    exit 0
+fi
+
+if [ "$1" == "--man" ]; then
+    echo -e "${commandInfo}" | less
+    exit 0
+fi
+
+# Verify required variables and parameters
+errorParameters=""
+if [ -z ${GITLAB_TOKEN+x} ]; then
+    msgErrorItem="Variable GITLAB_TOKEN is required"
+    errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
+fi
+if [ -z ${1+x} ]; then
+    msgErrorItem="Parameter GROUP is required"
+    errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
+fi
+if [ "$errorParameters" != "" ]; then
+    errorParameters=$(echo "$errorParameters" | sed -E "s/^\\\n//")
+    echo -e "Errors:\n$(echo -e "$errorParameters" | sed -E "s/^/ - /g")"
+    echo -e "\nTry '$0 --help' or '$0 --man' for more information."
+    exit 1
+fi
+
+GROUP_PARAM="$1"
+
+##########################################################################################
+###### Get all projects with variables in the group and in its subgroups (recursive) #####
+##########################################################################################
+
+# Get all projects in the group and in its subgroups (recursive)
+PROJECTS_LIST_JSON=$(gitlab-get-group-projects-recursive "${GROUP_PARAM}")
+
+PROJECTS_LENGTH=$(echo "$PROJECTS_LIST_JSON" | jq -r ".|length")
+
+# Get variables to projects got and add projects with variables to result
+RESULT_ALL="[]"
+PROJECTS_INDEX=0
+while [ $PROJECTS_INDEX -lt $PROJECTS_LENGTH ]; do
+    PROJECT_ITEM=$(echo "$PROJECTS_LIST_JSON" | jq -r ".[${PROJECTS_INDEX}]")
+    PROJECT_ID=$(echo "$PROJECT_ITEM" | jq -r ".id")
+
+    # Get project variables
+    PROJECT_VARIABLES_JSON=$(curl -s --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/projects/${PROJECT_ID}/variables")
+    PROJECT_VARIABLES_LENGTH=$(echo "$PROJECT_VARIABLES_JSON" | jq -r ".|length")
+
+    # If project has variables add the project with its variables to result
+    if [ $PROJECT_VARIABLES_LENGTH -gt 0 ]; then
+        PROJECT_ITEM=$((echo "$PROJECT_ITEM" ; echo "$PROJECT_VARIABLES_JSON") | jq '. + { variables: input }')
+        RESULT_ALL=$((echo "$RESULT_ALL" ; echo "$PROJECT_ITEM") | jq '. + [ input ]')
+    fi
+
+    PROJECTS_INDEX=$(($PROJECTS_INDEX+1))
+done
+
+# Just format json to view it in terminal
+echo "$RESULT_ALL" | jq .
