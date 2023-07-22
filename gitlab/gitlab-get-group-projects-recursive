@@ -7,25 +7,23 @@ if [ "$ADD_TO_PATH" == "true" ]; then
     export PATH="${SCRIPT_DIR}:${PATH}"
 fi
 
-# Default values
-DEFAULT_EXPR_GET_GROUP_JSON=".|{id,name,full_path}"
-DEFAULT_EXPR_GET_USER_JSON=".|{id,name,full_path:.username}"
-DEFAULT_EXPR_GET_SUBGROUPS_JSON=".[]|{id,name,full_path}"
-DEFAULT_EXPR_GET_PROJECTS_JSON=".[]|{id,path_with_namespace,ssh_url_to_repo,web_url}"
+source "$SCRIPT_DIR/.gitlab-default-values"
 commandInfo=$(echo "COMMAND NAME
-       $0 - get all projects from the group and in its subgroups recursively
+       $0 - get all projects from the namespace (group or user) and in its sub namespaces
+    (groups and/or users) recursively
 
 SYNOPSIS
-       $0 [OPTION]... GROUP
+       $0 [OPTION]... NAMESPACE
 
 PARAMETERS
-       GROUP [required]
-              if it is a number, then it is the group id, it is used to get all projects in the group
-              including projects in its subgroups (recursive)
-              or user id, it is used to get all projects in user namespace
-              but if it is not a number, then it is the group full path, it is used to get all projects in the group
-              including projects in its subgroups (recursive)
-              or username, it is used to get all projects in user namespace
+       NAMESPACE [required]
+              If it is a number, then it is the group id, it is used to get all projects in the
+           group including projects in its subgroups recursively or it is the user id, it is
+           used to get all projects in user namespace.
+
+              But if it is not a number, then it is the group full path, it is used to get all
+           projects in the group including projects in its subgroups recursively or it is the
+           username, it is used to get all projects in user namespace.
 
 OPTIONS
        --help
@@ -39,23 +37,23 @@ VARIABLES
               a gitlab token used to iterate with Gitlab API endpoints
 
        EXPR_GET_GROUP_JSON [optional]
-              jq filter applied in group to get only specified fields
-              it needs the fields id and full_path
-              default value = \"${DEFAULT_EXPR_GET_GROUP_JSON}\"
+              jq filter applied in group to get only specified fields.
+              It needs the fields id and full_path.
+              Default value = \"${DEFAULT_EXPR_GET_GROUP_JSON}\"
 
        EXPR_GET_USER_JSON [optional]
-              jq filter applied in user to get only specified fields
-              it needs the fields id and full_path
-              default value = \"${DEFAULT_EXPR_GET_USER_JSON}\"
+              jq filter applied in user to get only specified fields.
+              It needs the fields id and full_path.
+              Default value = \"${DEFAULT_EXPR_GET_USER_JSON}\"
 
        EXPR_GET_SUBGROUPS_JSON [optional]
-              jq filter applied in subgroup list to get only specified fields
-              it needs the fields id and full_path
-              default value = \"${DEFAULT_EXPR_GET_SUBGROUPS_JSON}\"
+              jq filter applied in subgroup list to get only specified fields.
+              It needs the fields id and full_path.
+              Default value = \"${DEFAULT_EXPR_GET_SUBGROUPS_JSON}\"
 
        EXPR_GET_PROJECTS_JSON [optional]
-              jq filter applied in project list to get only specified fields
-              default value = \"${DEFAULT_EXPR_GET_PROJECTS_JSON}\"\n")
+              jq filter applied in project list to get only specified fields.
+              Default value = \"${DEFAULT_EXPR_GET_PROJECTS_JSON}\"\n")
 
 
 if [ "$1" == "--help" ]; then
@@ -75,7 +73,7 @@ if [ -z ${GITLAB_TOKEN+x} ]; then
     errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
 fi
 if [ -z ${1+x} ]; then
-    msgErrorItem="Parameter GROUP is required"
+    msgErrorItem="Parameter NAMESPACE is required"
     errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
 fi
 if [ "$errorParameters" != "" ]; then
@@ -99,62 +97,71 @@ if [ -z ${EXPR_GET_PROJECTS_JSON+x} ]; then
     export EXPR_GET_PROJECTS_JSON=$DEFAULT_EXPR_GET_PROJECTS_JSON
 fi
 
-# Get all projects in the group and in its subgroups
-PENDING_GROUP_FULL_PATH="$1"
-RESULT_ALL="[]"
-while [ "$PENDING_GROUP_FULL_PATH" != "" ]; do
-    GROUP_PARAM=$(echo "$PENDING_GROUP_FULL_PATH" | sed -E "s/^([^ ]+)( .+)?/\1/")
-    PENDING_GROUP_FULL_PATH=$(echo "$PENDING_GROUP_FULL_PATH" | sed -E "s/^[^ ]+ ?//")
-    if [ "$((( $GROUP_PARAM )) 2>/dev/null && echo $? || echo $?)" -eq 0 ]; then
+NAMESPACE_PARAM="$1"
+
+###########################################################################################
+###########################################################################################
+######      Get all projects                                                         ######
+######      If NAMESPACE is a group, then get all projects in the group and in its   ######
+######   subgroups recursively                                                       ######
+######      If NAMESPACE is a user, then get all projects in the user namespace      ######
+###########################################################################################
+###########################################################################################
+
+PENDING_NAMESPACES="$NAMESPACE_PARAM"
+NAMESPACE_PROJECTS="[]"
+while [ "$PENDING_NAMESPACES" != "" ]; do
+    NAMESPACE_ITEM=$(echo "$PENDING_NAMESPACES" | sed -E "s/^([^ ]+)( .+)?/\1/")
+    PENDING_NAMESPACES=$(echo "$PENDING_NAMESPACES" | sed -E "s/^[^ ]+ ?//")
+    # Verify if namespace item value is a number
+    if [ "$((( $NAMESPACE_ITEM )) 2>/dev/null && echo $? || echo $?)" -eq 0 ]; then
         SEARCH_BY="ID"
-        GROUP_ID="$GROUP_PARAM"
-        PATH_GROUP_PARAM="$GROUP_ID"
+        NAMESPACE_ITEM_ID="$NAMESPACE_ITEM"
+        NAMESPACE_ITEM_PATH="$NAMESPACE_ITEM_ID"
     else
         SEARCH_BY="FULL_PATH"
-        # Get group by group full path
-        GROUP_FULL_PATH="$GROUP_PARAM"
-        GROUP_FULL_PATH_PARSED=$(echo "$GROUP_FULL_PATH" | sed -E "s/\//%2F/g")
-        PATH_GROUP_PARAM="$GROUP_FULL_PATH_PARSED"
+        NAMESPACE_ITEM_FULL_PATH_PARSED=$(echo "$NAMESPACE_ITEM" | sed -E "s/\//%2F/g")
+        NAMESPACE_ITEM_PATH="$NAMESPACE_ITEM_FULL_PATH_PARSED"
     fi
 
     # Get group data detail
-    GROUP_TYPE=GROUP
-    GROUP_REQUEST_URL="https://gitlab.com/api/v4/groups/${PATH_GROUP_PARAM}"
-    GROUP_DATA=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "${GROUP_REQUEST_URL}")
+    NAMESPACE_ITEM_TYPE=GROUP
+    NAMESPACE_ITEM_GROUP_REQUEST_URL="https://gitlab.com/api/v4/groups/${NAMESPACE_ITEM_PATH}"
+    NAMESPACE_ITEM_DATA=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "${NAMESPACE_ITEM_GROUP_REQUEST_URL}")
     if [ $? -eq 0 ]; then
-        GROUP_DATA=$(echo "$GROUP_DATA" | jq "$EXPR_GET_GROUP_JSON")
+        NAMESPACE_ITEM_DATA=$(echo "$NAMESPACE_ITEM_DATA" | jq "$EXPR_GET_GROUP_JSON")
     else
         # If failed try get user data detail instead of group detail
-        GROUP_TYPE=USER
+        NAMESPACE_ITEM_TYPE=USER
         if [ "$SEARCH_BY" == "ID" ]; then
-            GROUP_REQUEST_URL="https://gitlab.com/api/v4/users/${PATH_GROUP_PARAM}"
+            NAMESPACE_ITEM_REQUEST_URL="https://gitlab.com/api/v4/users/${NAMESPACE_ITEM_PATH}"
         elif [ "$SEARCH_BY" == "FULL_PATH" ]; then
-            GROUP_REQUEST_URL="https://gitlab.com/api/v4/users?username=${PATH_GROUP_PARAM}"
+            NAMESPACE_ITEM_REQUEST_URL="https://gitlab.com/api/v4/users?username=${NAMESPACE_ITEM_PATH}"
         fi
-        GROUP_DATA=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "${GROUP_REQUEST_URL}")
+        NAMESPACE_ITEM_DATA=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "${NAMESPACE_ITEM_REQUEST_URL}")
         if [ $? -ne 0 ]; then
             echo -e "Error: failed request to get group detail and project detail"
             exit 1
         fi
         if [ "$SEARCH_BY" == "FULL_PATH" ]; then
-            GROUP_DATA=$(echo "$GROUP_DATA" | jq ".[]")
+            NAMESPACE_ITEM_DATA=$(echo "$NAMESPACE_ITEM_DATA" | jq ".[]")
         fi
-        GROUP_DATA=$(echo "$GROUP_DATA" | jq "$EXPR_GET_USER_JSON")
+        NAMESPACE_ITEM_DATA=$(echo "$NAMESPACE_ITEM_DATA" | jq "$EXPR_GET_USER_JSON")
     fi
 
-    GROUP_ID=$(echo "$GROUP_DATA" | jq -r ".id")
-    RESULT=$(gitlab-get-group-projects "$GROUP_ID")
-    RESULT_ALL=$((echo "$RESULT_ALL" ; echo "$RESULT") | jq '. + input')
+    NAMESPACE_ITEM_ID=$(echo "$NAMESPACE_ITEM_DATA" | jq -r ".id")
+    NAMESPACE_ITEM_PROJECTS=$(gitlab-get-group-projects "$NAMESPACE_ITEM_ID")
+    NAMESPACE_PROJECTS=$((echo "$NAMESPACE_PROJECTS" ; echo "$NAMESPACE_ITEM_PROJECTS") | jq '. + input')
 
-    if [ "$GROUP_TYPE" == "GROUP" ]; then
+    if [ "$NAMESPACE_ITEM_TYPE" == "GROUP" ]; then
         # Get subgroups of the current group, it will be used to get projects in this group
-        GROUP_SUBGROUPS=$(curl -s --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/groups/${GROUP_ID}/subgroups" | jq "$EXPR_GET_SUBGROUPS_JSON" | jq --slurp '.')
+        GROUP_SUBGROUPS=$(curl -s --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/groups/${NAMESPACE_ITEM_ID}/subgroups" | jq "$EXPR_GET_SUBGROUPS_JSON" | jq --slurp '.')
         # If found at least one subgroup, add it to pending groups to get projects
         GROUP_SUBGROUPS_FULL_PATHS=$(echo "$GROUP_SUBGROUPS" | jq -r "[.[].full_path]|join(\" \")")
         if [ "$GROUP_SUBGROUPS_FULL_PATHS" != "" ]; then
-            PENDING_GROUP_FULL_PATH=$(echo "$PENDING_GROUP_FULL_PATH $GROUP_SUBGROUPS_FULL_PATHS" | sed -E "s/^[ ]+//")
+            PENDING_NAMESPACES=$(echo "$PENDING_NAMESPACES $GROUP_SUBGROUPS_FULL_PATHS" | sed -E "s/^[ ]+//")
         fi
     fi
 done
 # Just format json to view it in terminal
-echo "$RESULT_ALL" | jq .
+echo "$NAMESPACE_PROJECTS" | jq .

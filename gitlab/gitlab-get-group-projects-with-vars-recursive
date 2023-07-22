@@ -7,20 +7,24 @@ if [ "$ADD_TO_PATH" == "true" ]; then
     export PATH="${SCRIPT_DIR}:${PATH}"
 fi
 
+source "$SCRIPT_DIR/.gitlab-default-values"
 commandInfo=$(echo "COMMAND NAME
-       $0 - get all projects with variables from the group and in its subgroups recursively
+       $0 - get all projects with variables from the namespace (group or user) and in its
+    sub namespaces (groups and/or users) recursively
 
 SYNOPSIS
-       $0 [OPTION]... GROUP
+       $0 [OPTION]... NAMESPACE
 
 PARAMETERS
-       GROUP [required]
-              if it is a number, then it is the group id, it is used to get all projects in the group
-              including projects in its subgroups (recursive)
-              or user id, it is used to get all projects in user namespace
-              but if it is not a number, then it is the group full path, it is used to get all projects in the group
-              including projects in its subgroups (recursive)
-              or username, it is used to get all projects in user namespace
+       NAMESPACE [required]
+              If it is a number, then it is the group id, it is used to get all projects
+           with variables in the group including projects in its subgroups recursively or it
+           is the user id, it is used to get all projects with variables in user namespace.
+
+              But if it is not a number, then it is the group full path, it is used to get
+           all projects with variables in the group including projects in its subgroups
+           recursively or it is the username, it is used to get all projects with variables
+           in user namespace
 
 OPTIONS
        --help
@@ -34,23 +38,23 @@ VARIABLES
               a gitlab token used to iterate with Gitlab API endpoints
 
        EXPR_GET_GROUP_JSON [optional]
-              jq filter applied in group to get only specified fields
-              it needs the fields id and full_path
-              default value = \"${DEFAULT_EXPR_GET_GROUP_JSON}\"
+              jq filter applied in group to get only specified fields.
+              It needs the fields id and full_path.
+              Default value = \"${DEFAULT_EXPR_GET_GROUP_JSON}\"
 
        EXPR_GET_USER_JSON [optional]
-              jq filter applied in user to get only specified fields
-              it needs the fields id and full_path
-              default value = \"${DEFAULT_EXPR_GET_USER_JSON}\"
+              jq filter applied in user to get only specified fields.
+              It needs the fields id and full_path.
+              Default value = \"${DEFAULT_EXPR_GET_USER_JSON}\"
 
        EXPR_GET_SUBGROUPS_JSON [optional]
-              jq filter applied in subgroup list to get only specified fields
-              it needs the fields id and full_path
-              default value = \"${DEFAULT_EXPR_GET_SUBGROUPS_JSON}\"
+              jq filter applied in subgroup list to get only specified fields.
+              It needs the fields id and full_path.
+              Default value = \"${DEFAULT_EXPR_GET_SUBGROUPS_JSON}\"
 
        EXPR_GET_PROJECTS_JSON [optional]
-              jq filter applied in project list to get only specified fields
-              default value = \"${DEFAULT_EXPR_GET_PROJECTS_JSON}\"\n")
+              jq filter applied in project list to get only specified fields.
+              Default value = \"${DEFAULT_EXPR_GET_PROJECTS_JSON}\"\n")
 
 
 if [ "$1" == "--help" ]; then
@@ -70,7 +74,7 @@ if [ -z ${GITLAB_TOKEN+x} ]; then
     errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
 fi
 if [ -z ${1+x} ]; then
-    msgErrorItem="Parameter GROUP is required"
+    msgErrorItem="Parameter NAMESPACE is required"
     errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
 fi
 if [ "$errorParameters" != "" ]; then
@@ -80,19 +84,25 @@ if [ "$errorParameters" != "" ]; then
     exit 1
 fi
 
-GROUP_PARAM="$1"
+NAMESPACE_PARAM="$1"
 
-##########################################################################################
-###### Get all projects with variables in the group and in its subgroups (recursive) #####
-##########################################################################################
+###########################################################################################
+###########################################################################################
+######      Get all projects with variables                                          ######
+######      If NAMESPACE is a group, then get all projects with variables in the     ######
+######   group and in its subgroups recursively                                      ######
+######      If NAMESPACE is a user, then get all projects with variables in the      ######
+######   user namespace                                                              ######
+###########################################################################################
+###########################################################################################
 
-# Get all projects in the group and in its subgroups (recursive)
-PROJECTS_LIST_JSON=$(gitlab-get-group-projects-recursive "${GROUP_PARAM}")
+# Get all projects from the namespace and in its sub namespaces recursively
+PROJECTS_LIST_JSON=$(gitlab-get-group-projects-recursive "${NAMESPACE_PARAM}")
 
 PROJECTS_LENGTH=$(echo "$PROJECTS_LIST_JSON" | jq -r ".|length")
 
 # Get variables to projects got and add projects with variables to result
-RESULT_ALL="[]"
+PROJECT_WITH_VARS_LIST_JSON="[]"
 PROJECTS_INDEX=0
 while [ $PROJECTS_INDEX -lt $PROJECTS_LENGTH ]; do
     PROJECT_ITEM=$(echo "$PROJECTS_LIST_JSON" | jq -r ".[${PROJECTS_INDEX}]")
@@ -104,12 +114,12 @@ while [ $PROJECTS_INDEX -lt $PROJECTS_LENGTH ]; do
 
     # If project has variables add the project with its variables to result
     if [ $PROJECT_VARIABLES_LENGTH -gt 0 ]; then
-        PROJECT_ITEM=$((echo "$PROJECT_ITEM" ; echo "$PROJECT_VARIABLES_JSON") | jq '. + { variables: input }')
-        RESULT_ALL=$((echo "$RESULT_ALL" ; echo "$PROJECT_ITEM") | jq '. + [ input ]')
+        PROJECT_ITEM_WITH_VARS=$((echo "$PROJECT_ITEM" ; echo "$PROJECT_VARIABLES_JSON") | jq '. + { variables: input }')
+        PROJECT_WITH_VARS_LIST_JSON=$((echo "$PROJECT_WITH_VARS_LIST_JSON" ; echo "$PROJECT_ITEM_WITH_VARS") | jq '. + [ input ]')
     fi
 
     PROJECTS_INDEX=$(($PROJECTS_INDEX+1))
 done
 
 # Just format json to view it in terminal
-echo "$RESULT_ALL" | jq .
+echo "$PROJECT_WITH_VARS_LIST_JSON" | jq .

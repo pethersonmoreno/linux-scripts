@@ -7,21 +7,21 @@ if [ "$ADD_TO_PATH" == "true" ]; then
     export PATH="${SCRIPT_DIR}:${PATH}"
 fi
 
-# Default values
-DEFAULT_EXPR_GET_PROJECTS_JSON=".[]|{id,path_with_namespace,ssh_url_to_repo,web_url}"
-DEFAULT_EXPR_GET_GROUP_JSON=".|{id,name,full_path}"
+source "$SCRIPT_DIR/.gitlab-default-values"
 commandInfo=$(echo "COMMAND NAME
-       $0 - get all projects from the group
+       $0 - get all projects from the namespace (group or user)
 
 SYNOPSIS
-       $0 [OPTION]... GROUP
+       $0 [OPTION]... NAMESPACE
 
 PARAMETERS
-       GROUP [required]
-              if it is a number, then it is the group id, it is used to get all projects in the group
-              or user id, it is used to get all projects in user namespace
-              but if it is not a number, then it is the group full path, it is used to get all projects in the group
-              or username, it is used to get all projects in user namespace
+       NAMESPACE [required]
+              If it is a number, then it is the group id, it is used to get all projects in
+           the group or it is the user id, it is used to get all projects in user namespace
+
+              But if it is not a number, then it is the group full path, it is used to get
+           all projects in the group or it is username, it is used to get all projects in
+           user namespace
 
 OPTIONS
        --help
@@ -60,7 +60,7 @@ if [ -z ${GITLAB_TOKEN+x} ]; then
     errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
 fi
 if [ -z ${1+x} ]; then
-    msgErrorItem="Parameter GROUP is required"
+    msgErrorItem="Parameter NAMESPACE is required"
     errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
 fi
 if [ "$errorParameters" != "" ]; then
@@ -81,18 +81,16 @@ fi
 # Verify if parameter is number, then it is ID, or just full name
 if [ "$((( $1 )) 2>/dev/null && echo $? || echo $?)" -eq 0 ]; then
     SEARCH_BY="ID"
-    GROUP_ID="$1"
-    PATH_GROUP_PARAM="$GROUP_ID"
+    NAMESPACE_ID="$1"
+    NAMESPACE_PATH="$NAMESPACE_ID"
 else
     SEARCH_BY="FULL_PATH"
-    # Get group by group full path
-    GROUP_FULL_PATH="$1"
-    GROUP_FULL_PATH_PARSED=$(echo "$GROUP_FULL_PATH" | sed -E "s/\//%2F/g")
-    PATH_GROUP_PARAM="$GROUP_FULL_PATH_PARSED"
+    NAMESPACE_FULL_PATH_PARSED=$(echo "$1" | sed -E "s/\//%2F/g")
+    NAMESPACE_PATH="$NAMESPACE_FULL_PATH_PARSED"
 fi
 
 # Get all projects in the group
-RESULT_ALL="[]"
+NAMESPACE_PROJECTS="[]"
 per_page=1000
 page=0
 page_empty=false
@@ -100,28 +98,28 @@ while [ $page_empty != true ]; do
     page=$(($page+1))
 
     # Get projects in the group/user in the current page
-    REQUEST_URL="https://gitlab.com/api/v4/groups/${PATH_GROUP_PARAM}/projects?per_page=$per_page&page=$page"
-    RESULT=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "${REQUEST_URL}")
+    # Try get projects in the group in the current page
+    REQUEST_URL="https://gitlab.com/api/v4/groups/${NAMESPACE_PATH}/projects?per_page=$per_page&page=$page"
+    NAMESPACE_PROJECTS_PAGE=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "${REQUEST_URL}")
     # If failed try get projects in user namespace
     if [ $? -ne 0 ]; then
-        REQUEST_URL="https://gitlab.com/api/v4/users/${PATH_GROUP_PARAM}/projects?per_page=$per_page&page=$page"
-        RESULT=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "${REQUEST_URL}")
+        REQUEST_URL="https://gitlab.com/api/v4/users/${NAMESPACE_PATH}/projects?per_page=$per_page&page=$page"
+        NAMESPACE_PROJECTS_PAGE=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "${REQUEST_URL}")
         if [ $? -ne 0 ]; then
-            echo -e "Error: failed request to get projects in group and project"
+            echo -e "Error: failed request to get projects in group and user"
             exit 1
         fi
     fi
 
-    RESULT=$(echo "$RESULT" | jq "$EXPR_GET_PROJECTS_JSON" | jq --slurp '.')
-    
-    RESULT_ALL=$((echo "$RESULT_ALL" ; echo "$RESULT") | jq '. + input')
+    NAMESPACE_PROJECTS_PAGE=$(echo "$NAMESPACE_PROJECTS_PAGE" | jq "$EXPR_GET_PROJECTS_JSON" | jq --slurp '.')
+    NAMESPACE_PROJECTS=$((echo "$NAMESPACE_PROJECTS" ; echo "$NAMESPACE_PROJECTS_PAGE") | jq '. + input')
 
     # Verify if the current page doesn't have projects
-    RESULT_LENGTH=$(echo "$RESULT" | jq ".|length")
-    if [[ $RESULT_LENGTH -eq 0 ]]; then
+    NAMESPACE_PROJECTS_PAGE_LENGTH=$(echo "$NAMESPACE_PROJECTS_PAGE" | jq ".|length")
+    if [[ $NAMESPACE_PROJECTS_PAGE_LENGTH -eq 0 ]]; then
         page_empty=true
     fi
 done
 
 # Just format json to view it in terminal
-echo "$RESULT_ALL" | jq .
+echo "$NAMESPACE_PROJECTS" | jq .

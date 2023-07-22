@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# Default values
+export DEFAULT_EXPR_GET_GROUP_JSON=".|{id,name,full_path}"
+export DEFAULT_EXPR_GET_USER_JSON=".|{id,name,full_path:.username}"
+export DEFAULT_EXPR_GET_SUBGROUPS_JSON=".[]|{id,name,full_path}"
+export DEFAULT_EXPR_GET_PROJECTS_JSON=".[]|{id,path_with_namespace,ssh_url_to_repo,web_url}"
