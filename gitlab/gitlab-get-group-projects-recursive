@@ -98,7 +98,8 @@ fi
 if [ -z ${EXPR_GET_PROJECTS_JSON+x} ]; then
     export EXPR_GET_PROJECTS_JSON=$DEFAULT_EXPR_GET_PROJECTS_JSON
 fi
-# Get all projects in the group and in its groups
+
+# Get all projects in the group and in its subgroups
 PENDING_GROUP_FULL_PATH="$1"
 RESULT_ALL="[]"
 while [ "$PENDING_GROUP_FULL_PATH" != "" ]; do
