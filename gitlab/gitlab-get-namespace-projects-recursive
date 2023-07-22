@@ -150,7 +150,7 @@ while [ "$PENDING_NAMESPACES" != "" ]; do
     fi
 
     NAMESPACE_ITEM_ID=$(echo "$NAMESPACE_ITEM_DATA" | jq -r ".id")
-    NAMESPACE_ITEM_PROJECTS=$(gitlab-get-group-projects "$NAMESPACE_ITEM_ID")
+    NAMESPACE_ITEM_PROJECTS=$(gitlab-get-namespace-projects "$NAMESPACE_ITEM_ID")
     NAMESPACE_PROJECTS=$((echo "$NAMESPACE_PROJECTS" ; echo "$NAMESPACE_ITEM_PROJECTS") | jq '. + input')
 
     if [ "$NAMESPACE_ITEM_TYPE" == "GROUP" ]; then

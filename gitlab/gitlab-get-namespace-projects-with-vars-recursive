@@ -97,7 +97,7 @@ NAMESPACE_PARAM="$1"
 ###########################################################################################
 
 # Get all projects from the namespace and in its sub namespaces recursively
-PROJECTS_LIST_JSON=$(gitlab-get-group-projects-recursive "${NAMESPACE_PARAM}")
+PROJECTS_LIST_JSON=$(gitlab-get-namespace-projects-recursive "${NAMESPACE_PARAM}")
 
 PROJECTS_LENGTH=$(echo "$PROJECTS_LIST_JSON" | jq -r ".|length")
 
