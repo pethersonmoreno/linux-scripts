@@ -1,0 +1,99 @@
+#!/bin/bash
+
+# If script dir is not in PATH, add it
+SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )")
+echo "$PATH" | sed -E "s/:/\n/g" | grep -E "^${SCRIPT_DIR}$" > /dev/null && ADD_TO_PATH=false || ADD_TO_PATH=true
+if [ "$ADD_TO_PATH" == "true" ]; then
+    export PATH="${SCRIPT_DIR}:${PATH}"
+fi
+
+source "$SCRIPT_DIR/.gitlab-default-values"
+commandInfo=$(echo "COMMAND NAME
+       $0 - get vars from group by group id
+
+SYNOPSIS
+       $0 [OPTION]... GROUP_ID [VAR_TYPE [ENVIRONMENT_SCOPE]]
+
+PARAMETERS
+       GROUP_ID [required]
+              Group id used to get group vars
+
+       VAR_TYPE [opcional]
+              Var type used to filter variables. It can be \"env_var\" or \"file\".
+
+       ENVIRONMENT_SCOPE [opcional]
+              Environment scope used to filter variables. It can be \"*\" or any other group environment.
+
+OPTIONS
+       --help
+              display this help and exit
+
+       --man
+              display this help with less, like command man, then exit\n")
+
+if [ "$1" == "--help" ]; then
+    echo -e "${commandInfo}"
+    exit 0
+fi
+
+if [ "$1" == "--man" ]; then
+    echo -e "${commandInfo}" | less
+    exit 0
+fi
+
+function list_contains_item {
+  local list="$1"
+  local item="$2"
+  for itemInList in $list
+  do
+    if [ "$item" == "$itemInList" ]; then
+      echo -n "true"
+      return 0 # must be 0 to work with && in the command line
+    fi
+  done
+  echo -n "false"
+  return 1 # must be 1 to work with || in the command line
+}
+
+# Verify required variables and parameters
+errorParameters=""
+if [ -z ${GITLAB_TOKEN+x} ]; then
+    msgErrorItem="Variable GITLAB_TOKEN is required"
+    errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
+fi
+if [ -z ${1+x} ]; then
+    msgErrorItem="Parameter GROUP_ID is required"
+    errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
+fi
+validVarTypes="env_var file"
+if [ ! -z "$2" ] && [ "$(list_contains_item "$validVarTypes" "$2")" == "false" ]; then
+    msgErrorItem="Parameter VAR_TYPE must be a valid value: $(echo "$validVarTypes"|tr ' ' ,)"
+    errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
+fi
+if [ "$errorParameters" != "" ]; then
+    errorParameters=$(echo "$errorParameters" | sed -E "s/^\\\n//")
+    echo -e "Errors:\n$(echo -e "$errorParameters" | sed -E "s/^/ - /g")"
+    echo -e "\nTry '$0 --help' or '$0 --man' for more information."
+    exit 1
+fi
+
+GROUP_ID="$1"
+VAR_TYPE="$2"
+ENVIRONMENT_SCOPE="$3"
+
+# Get group variables
+GROUP_VARIABLES_JSON=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/groups/${GROUP_ID}/variables")
+if [ $? -ne 0 ]; then
+    echo -e "Error: failed request to get group vars"
+    exit 1
+fi
+if [ ! -z "$VAR_TYPE" ]; then
+    GROUP_VARIABLES_JSON=$(echo "$GROUP_VARIABLES_JSON" | jq ".|map(select(.variable_type==\"${VAR_TYPE}\"))")
+fi
+
+if [ ! -z "$ENVIRONMENT_SCOPE" ]; then
+    GROUP_VARIABLES_JSON=$(echo "$GROUP_VARIABLES_JSON" | jq ".|map(select(.environment_scope==\"${ENVIRONMENT_SCOPE}\"))")
+fi
+
+# Just format json to view it in terminal
+echo "$GROUP_VARIABLES_JSON" | jq .
