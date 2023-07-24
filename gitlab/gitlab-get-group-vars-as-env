@@ -1,0 +1,107 @@
+#!/bin/bash
+
+# If script dir is not in PATH, add it
+SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )")
+echo "$PATH" | sed -E "s/:/\n/g" | grep -E "^${SCRIPT_DIR}$" > /dev/null && ADD_TO_PATH=false || ADD_TO_PATH=true
+if [ "$ADD_TO_PATH" == "true" ]; then
+    export PATH="${SCRIPT_DIR}:${PATH}"
+fi
+
+source "$SCRIPT_DIR/.gitlab-default-values"
+commandInfo=$(echo "COMMAND NAME
+       $0 - get env vars from group by group id
+
+SYNOPSIS
+       $0 [OPTION]... GROUP_ID ENVIRONMENT_SCOPE [WITH_SCOPE_ALL [OUTPUT_ENV_VARS]]
+
+PARAMETERS
+       GROUP_ID [required]
+              Project id used to get group vars
+
+       ENVIRONMENT_SCOPE [required]
+              Environment scope used to filter variables. It can be \"*\" or any other project environment.
+
+       WITH_SCOPE_ALL [Optional]
+              If true, get environment variables defined by ENVIRONMENT_SCOPE more variables with scope all.
+              And if an variable exists in ENVIRONMENT_SCOPE and in all scope, only ENVIRONMENT_SCOPE 
+           is considered.
+              Default value is false.
+
+       OUTPUT_ENV_VARS [Optional]
+              If true, the output is in the env file format.
+              If not true (false), the output is just the result json.
+              Default value is true.
+
+OPTIONS
+       --help
+              display this help and exit
+
+       --man
+              display this help with less, like command man, then exit\n")
+
+if [ "$1" == "--help" ]; then
+    echo -e "${commandInfo}"
+    exit 0
+fi
+
+if [ "$1" == "--man" ]; then
+    echo -e "${commandInfo}" | less
+    exit 0
+fi
+
+# Verify required variables and parameters
+errorParameters=""
+if [ -z ${GITLAB_TOKEN+x} ]; then
+    msgErrorItem="Variable GITLAB_TOKEN is required"
+    errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
+fi
+if [ -z ${1+x} ]; then
+    msgErrorItem="Parameter GROUP_ID is required"
+    errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
+fi
+if [ -z "$2" ]; then
+    msgErrorItem="Parameter ENVIRONMENT_SCOPE is required"
+    errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
+fi
+if [ "$errorParameters" != "" ]; then
+    errorParameters=$(echo "$errorParameters" | sed -E "s/^\\\n//")
+    echo -e "Errors:\n$(echo -e "$errorParameters" | sed -E "s/^/ - /g")"
+    echo -e "\nTry '$0 --help' or '$0 --man' for more information."
+    exit 1
+fi
+
+GROUP_ID="$1"
+ENVIRONMENT_SCOPE="$2"
+WITH_SCOPE_ALL="false"
+if [ ! -z "$3" ]; then
+    WITH_SCOPE_ALL="$3"
+fi
+OUTPUT_ENV_VARS="true"
+if [ ! -z "$4" ]; then
+    OUTPUT_ENV_VARS="$4"
+fi
+if [ "$WITH_SCOPE_ALL" == "true" ]; then
+    VARIABLES_ALL_ENV_SCOPES=$(gitlab-get-group-vars "${GROUP_ID}" "env_var")
+    if [ "$ENVIRONMENT_SCOPE" == "*" ]; then
+        VARIABLES_ENV_SCOPE_ALL="[]"
+    else
+        VARIABLES_ENV_SCOPE_ALL=$(echo "$VARIABLES_ALL_ENV_SCOPES" | jq ".|map(select(.environment_scope==\"*\"))")
+    fi
+    VARIABLES_ENV_SCOPE_PARAM=$(echo "$VARIABLES_ALL_ENV_SCOPES" | jq ".|map(select(.environment_scope==\"${ENVIRONMENT_SCOPE}\"))")
+    while IFS=$'\t' read -r variableKey; do
+        VARIABLES_ENV_SCOPE_ALL=$(echo "$VARIABLES_ENV_SCOPE_ALL" | jq ".|map(select(.key!=\"${variableKey}\"))")
+    done <<< "$(echo "$VARIABLES_ENV_SCOPE_PARAM" | jq -r ".[]|[.key]|@tsv")"
+    GROUP_VARIABLES_JSON=$((echo "$VARIABLES_ENV_SCOPE_ALL" ; echo "$VARIABLES_ENV_SCOPE_PARAM") | jq '. + input')
+else
+    GROUP_VARIABLES_JSON=$(gitlab-get-group-vars "${GROUP_ID}" "env_var" "${ENVIRONMENT_SCOPE}")
+fi
+
+if [ "$OUTPUT_ENV_VARS" == "true" ]; then
+    echo "$GROUP_VARIABLES_JSON" | jq -r '.|map([.key,.value])|.[]|@tsv' | \
+    while IFS=$'\t' read -r variableKey variableValue; do
+        echo "${variableKey}=${variableValue}"
+    done
+else
+    # Just format json to view it in terminal
+    echo "$GROUP_VARIABLES_JSON" | jq .
+fi
