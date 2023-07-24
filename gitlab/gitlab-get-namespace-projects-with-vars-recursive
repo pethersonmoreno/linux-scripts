@@ -121,5 +121,5 @@ while [ $PROJECTS_INDEX -lt $PROJECTS_LENGTH ]; do
     PROJECTS_INDEX=$(($PROJECTS_INDEX+1))
 done
 
-# Just format json to view it in terminal
-echo "$PROJECT_WITH_VARS_LIST_JSON" | jq .
+# Change projects with variables list to variables with its project list
+echo "$PROJECT_WITH_VARS_LIST_JSON" | jq ".[]|[{project:(.|del(.variables)), variable: .variables[]}]|.[]" | jq --slurp .
