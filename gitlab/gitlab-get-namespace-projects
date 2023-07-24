@@ -99,7 +99,7 @@ while [ $page_empty != true ]; do
 
     # Get projects in the group/user in the current page
     # Try get projects in the group in the current page
-    REQUEST_URL="https://gitlab.com/api/v4/groups/${NAMESPACE_PATH}/projects?per_page=$per_page&page=$page"
+    REQUEST_URL="https://gitlab.com/api/v4/groups/${NAMESPACE_PATH}/projects?with_shared=false&per_page=$per_page&page=$page"
     NAMESPACE_PROJECTS_PAGE=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "${REQUEST_URL}")
     # If failed try get projects in user namespace
     if [ $? -ne 0 ]; then
