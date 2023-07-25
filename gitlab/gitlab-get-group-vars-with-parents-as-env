@@ -91,32 +91,32 @@ while [[ $ITEM_GROUP_ID != null ]]; do
         break
     fi
 
-    if [ "$WITH_SCOPE_ALL" == "true" ]; then
+    ITEM_VARIABLES_ENV_SCOPE_ALL="[]"
+    if [ "$WITH_SCOPE_ALL" == "true" ] && [ "$ENVIRONMENT_SCOPE" != "*" ]; then
         ITEM_VARIABLES_ALL_ENV_SCOPES=$(gitlab-get-group-vars "${ITEM_GROUP_ID}" "env_var")
+        # Get variables with environment scope all in group $ITEM_GROUP_ID
+        ITEM_VARIABLES_ENV_SCOPE_ALL=$(echo "$ITEM_VARIABLES_ALL_ENV_SCOPES" | jq ".|map(select(.environment_scope==\"*\"))")
+        # Get variables with environment scope defined by param in group $ITEM_GROUP_ID
+        ITEM_VARIABLES_ENV_SCOPE_PARAM=$(echo "$ITEM_VARIABLES_ALL_ENV_SCOPES" | jq ".|map(select(.environment_scope==\"${ENVIRONMENT_SCOPE}\"))")
+    else
+        # Get variables with environment scope defined by param in group $ITEM_GROUP_ID
+        ITEM_VARIABLES_ENV_SCOPE_PARAM=$(gitlab-get-group-vars "${ITEM_GROUP_ID}" "env_var" "${ENVIRONMENT_SCOPE}")
+    fi
 
-        # Get variables with precedence that has scope all in the group and its parent groups
-        if [ "$ENVIRONMENT_SCOPE" == "*" ]; then
-            ITEM_VARIABLES_ENV_SCOPE_ALL="[]"
-        else
-            ITEM_VARIABLES_ENV_SCOPE_ALL=$(echo "$ITEM_VARIABLES_ALL_ENV_SCOPES" | jq ".|map(select(.environment_scope==\"*\"))")
-        fi
+    # Unifies fetched variables by organizing according to their precedence which is environment scope all in the group and its parent groups
+    if [ "$ITEM_VARIABLES_ENV_SCOPE_ALL" != "[]" ]; then
         while IFS=$'\t' read -r variableKey; do
             ITEM_VARIABLES_ENV_SCOPE_ALL=$(echo "$ITEM_VARIABLES_ENV_SCOPE_ALL" | jq ".|map(select(.key!=\"${variableKey}\"))")
         done <<< "$(echo "$VARIABLES_ENV_SCOPE_ALL" | jq -r ".[]|[.key]|@tsv")"
-        VARIABLES_ENV_SCOPE_ALL=$((echo "$VARIABLES_ENV_SCOPE_ALL" ; echo "$ITEM_VARIABLES_ENV_SCOPE_ALL") | jq '. + input')
+        VARIABLES_ENV_SCOPE_ALL=$((echo "$ITEM_VARIABLES_ENV_SCOPE_ALL" ; echo "$VARIABLES_ENV_SCOPE_ALL") | jq '. + input')
+    fi
 
-        # Get variables with precedence that has environment scope defined by param in the group and its parent groups
-        ITEM_VARIABLES_ENV_SCOPE_PARAM=$(echo "$ITEM_VARIABLES_ALL_ENV_SCOPES" | jq ".|map(select(.environment_scope==\"${ENVIRONMENT_SCOPE}\"))")
+    # Unifies fetched variables by organizing according to their precedence which is environment scope defined by param in the group and its parent groups
+    if [ "$ITEM_VARIABLES_ENV_SCOPE_PARAM" != "[]" ]; then
         while IFS=$'\t' read -r variableKey; do
             ITEM_VARIABLES_ENV_SCOPE_PARAM=$(echo "$ITEM_VARIABLES_ENV_SCOPE_PARAM" | jq ".|map(select(.key!=\"${variableKey}\"))")
         done <<< "$(echo "$VARIABLES_ENV_SCOPE_PARAM" | jq -r ".[]|[.key]|@tsv")"
-        VARIABLES_ENV_SCOPE_PARAM=$((echo "$VARIABLES_ENV_SCOPE_PARAM" ; echo "$ITEM_VARIABLES_ENV_SCOPE_PARAM") | jq '. + input')
-    else
-        ITEM_VARIABLES_ENV_SCOPE_PARAM=$(gitlab-get-group-vars "${ITEM_GROUP_ID}" "env_var" "${ENVIRONMENT_SCOPE}")
-        while IFS=$'\t' read -r variableKey; do
-            ITEM_VARIABLES_ENV_SCOPE_PARAM=$(echo "$ITEM_VARIABLES_ENV_SCOPE_PARAM" | jq ".|map(select(.key!=\"${variableKey}\"))")
-        done <<< "$(echo "$VARIABLES_ENV_SCOPE_PARAM" | jq -r ".[]|[.key]|@tsv")"
-        VARIABLES_ENV_SCOPE_PARAM=$((echo "$VARIABLES_ENV_SCOPE_PARAM" ; echo "$ITEM_VARIABLES_ENV_SCOPE_PARAM") | jq '. + input')
+        VARIABLES_ENV_SCOPE_PARAM=$((echo "$ITEM_VARIABLES_ENV_SCOPE_PARAM" ; echo "$VARIABLES_ENV_SCOPE_PARAM") | jq '. + input')
     fi
 
     # Continue to next interation
