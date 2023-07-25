@@ -81,8 +81,10 @@ PROJECT_ID="$1"
 VAR_TYPE="$2"
 ENVIRONMENT_SCOPE="$3"
 
+per_page=1000
+page=1
 # Get project variables
-PROJECT_VARIABLES_JSON=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/projects/${PROJECT_ID}/variables")
+PROJECT_VARIABLES_JSON=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/projects/${PROJECT_ID}/variables?per_page=$per_page&page=$page")
 if [ $? -ne 0 ]; then
     echo -e "Error: failed request to get project vars"
     exit 1
