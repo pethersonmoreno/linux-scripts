@@ -101,21 +101,21 @@ while [[ $ITEM_GROUP_ID != null ]]; do
             ITEM_VARIABLES_ENV_SCOPE_ALL=$(echo "$ITEM_VARIABLES_ALL_ENV_SCOPES" | jq ".|map(select(.environment_scope==\"*\"))")
         fi
         while IFS=$'\t' read -r variableKey; do
-            VARIABLES_ENV_SCOPE_ALL=$(echo "$VARIABLES_ENV_SCOPE_ALL" | jq ".|map(select(.key!=\"${variableKey}\"))")
-        done <<< "$(echo "$ITEM_VARIABLES_ENV_SCOPE_ALL" | jq -r ".[]|[.key]|@tsv")"
+            ITEM_VARIABLES_ENV_SCOPE_ALL=$(echo "$ITEM_VARIABLES_ENV_SCOPE_ALL" | jq ".|map(select(.key!=\"${variableKey}\"))")
+        done <<< "$(echo "$VARIABLES_ENV_SCOPE_ALL" | jq -r ".[]|[.key]|@tsv")"
         VARIABLES_ENV_SCOPE_ALL=$((echo "$VARIABLES_ENV_SCOPE_ALL" ; echo "$ITEM_VARIABLES_ENV_SCOPE_ALL") | jq '. + input')
 
         # Get variables with precedence that has environment scope defined by param in the group and its parent groups
         ITEM_VARIABLES_ENV_SCOPE_PARAM=$(echo "$ITEM_VARIABLES_ALL_ENV_SCOPES" | jq ".|map(select(.environment_scope==\"${ENVIRONMENT_SCOPE}\"))")
         while IFS=$'\t' read -r variableKey; do
-            VARIABLES_ENV_SCOPE_PARAM=$(echo "$VARIABLES_ENV_SCOPE_PARAM" | jq ".|map(select(.key!=\"${variableKey}\"))")
-        done <<< "$(echo "$ITEM_VARIABLES_ENV_SCOPE_PARAM" | jq -r ".[]|[.key]|@tsv")"
+            ITEM_VARIABLES_ENV_SCOPE_PARAM=$(echo "$ITEM_VARIABLES_ENV_SCOPE_PARAM" | jq ".|map(select(.key!=\"${variableKey}\"))")
+        done <<< "$(echo "$VARIABLES_ENV_SCOPE_PARAM" | jq -r ".[]|[.key]|@tsv")"
         VARIABLES_ENV_SCOPE_PARAM=$((echo "$VARIABLES_ENV_SCOPE_PARAM" ; echo "$ITEM_VARIABLES_ENV_SCOPE_PARAM") | jq '. + input')
     else
         ITEM_VARIABLES_ENV_SCOPE_PARAM=$(gitlab-get-group-vars "${ITEM_GROUP_ID}" "env_var" "${ENVIRONMENT_SCOPE}")
         while IFS=$'\t' read -r variableKey; do
-            VARIABLES_ENV_SCOPE_PARAM=$(echo "$VARIABLES_ENV_SCOPE_PARAM" | jq ".|map(select(.key!=\"${variableKey}\"))")
-        done <<< "$(echo "$ITEM_VARIABLES_ENV_SCOPE_PARAM" | jq -r ".[]|[.key]|@tsv")"
+            ITEM_VARIABLES_ENV_SCOPE_PARAM=$(echo "$ITEM_VARIABLES_ENV_SCOPE_PARAM" | jq ".|map(select(.key!=\"${variableKey}\"))")
+        done <<< "$(echo "$VARIABLES_ENV_SCOPE_PARAM" | jq -r ".[]|[.key]|@tsv")"
         VARIABLES_ENV_SCOPE_PARAM=$((echo "$VARIABLES_ENV_SCOPE_PARAM" ; echo "$ITEM_VARIABLES_ENV_SCOPE_PARAM") | jq '. + input')
     fi
 
