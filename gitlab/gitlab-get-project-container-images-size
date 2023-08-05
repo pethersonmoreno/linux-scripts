@@ -1,0 +1,141 @@
+#!/bin/bash
+
+# check dependencies
+if [ -z $(type -p jq) ]; then
+    1>&2 printf "[ ERROR ] need 'jq' dependency to parse json."
+    exit 1
+fi
+
+# If script dir is not in PATH, add it
+SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )")
+echo "$PATH" | sed -E "s/:/\n/g" | grep -E "^${SCRIPT_DIR}$" > /dev/null && ADD_TO_PATH=false || ADD_TO_PATH=true
+if [ "$ADD_TO_PATH" == "true" ]; then
+    export PATH="${SCRIPT_DIR}:${PATH}"
+fi
+
+source "$SCRIPT_DIR/.gitlab-default-values"
+commandInfo=$(echo "COMMAND NAME
+       $0 - get project by project id
+
+SYNOPSIS
+       $0 [OPTION]... PROJECT
+
+PARAMETERS
+       PROJECT [required]
+              If it is a number, then it is the project ID, it is used to get the project
+           with this project ID and with container images size
+
+              But if it is not a number, then it is the project full path, it is used to get
+           the project with this project full path and with container images size
+
+       FORMAT [optional]
+              "" to Bytes without B suffix
+              B to Bytes
+              KB to Kilo Bytes
+              MB to Mega Bytes
+              GB to Giba Bytes
+
+OPTIONS
+       --help
+              display this help and exit
+
+       --man
+              display this help with less, like command man, then exit\n")
+
+if [ "$1" == "--help" ]; then
+    echo -e "${commandInfo}"
+    exit 0
+fi
+
+if [ "$1" == "--man" ]; then
+    echo -e "${commandInfo}" | less
+    exit 0
+fi
+
+# Verify required variables and parameters
+errorParameters=""
+if [ -z ${GITLAB_TOKEN+x} ]; then
+    msgErrorItem="Variable GITLAB_TOKEN is required"
+    errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
+fi
+if [ -z ${1+x} ]; then
+    msgErrorItem="Parameter PROJECT is required"
+    errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
+fi
+if [ "$errorParameters" != "" ]; then
+    errorParameters=$(echo "$errorParameters" | sed -E "s/^\\\n//")
+    echo -e "Errors:\n$(echo -e "$errorParameters" | sed -E "s/^/ - /g")"
+    echo -e "\nTry '$0 --help' or '$0 --man' for more information."
+    exit 1
+fi
+
+# Verify if parameter is number, then it is ID, or just full name
+if [ "$((( $1 )) 2>/dev/null && echo $? || echo $?)" -eq 0 ]; then
+    SEARCH_BY="ID"
+    PROJECT_ID="$1"
+    PROJECT_PATH="$PROJECT_ID"
+else
+    SEARCH_BY="FULL_PATH"
+    PROJECT_PARSED=$(echo "$1" | sed -E "s/\//%2F/g")
+    PROJECT_PATH="$PROJECT_PARSED"
+fi
+if [ -z ${2+x} ]; then
+    FORMAT_OUTPUT="" # Just bytes without B suffix
+else
+    FORMAT_OUTPUT="$2"
+fi
+
+# Get project container repositories
+PROJECT_CONTAINERS_REPOSITORIES_JSON=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/projects/${PROJECT_PATH}/registry/repositories")
+if [ $? -ne 0 ]; then
+    echo -e "Error: failed request to get project repositories"
+    exit 1
+fi
+# Get container repositories its size
+TOTAL_SIZE=0
+PROJECT_CONTAINERS_REPOSITORIES_JSON_LENGTH="$(echo "$PROJECT_CONTAINERS_REPOSITORIES_JSON" | jq -r '.|length')"
+if [[ $PROJECT_CONTAINERS_REPOSITORIES_JSON_LENGTH -gt 0 ]]; then
+    while IFS=$'\t' read -r containerRegistryId projectId; do
+        ITEM_CONTAINER_REGISTRY_TAGS=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/projects/${PROJECT_PATH}/registry/repositories/${containerRegistryId}/tags")
+        if [ $? -ne 0 ]; then
+            echo -e "Error: failed request to get container registry tags"
+            exit 1
+        fi
+        ITEM_CONTAINER_REGISTRY_TAGS_LENGTH="$(echo "$ITEM_CONTAINER_REGISTRY_TAGS" | jq -r '.|length')"
+        if [[ $ITEM_CONTAINER_REGISTRY_TAGS_LENGTH -le 0 ]]; then
+            continue
+        fi
+        while IFS=$'\t' read -r tagName; do
+            ITEM_CONTAINER_REGISTRY_TAG_DETAIL=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/projects/${PROJECT_PATH}/registry/repositories/${containerRegistryId}/tags/${tagName}")
+            if [ $? -ne 0 ]; then
+                echo -e "Error: failed request to get container registry tag detail"
+                exit 1
+            fi
+            ITEM_TOTAL_SIZE=$(echo "$ITEM_CONTAINER_REGISTRY_TAG_DETAIL" | jq .total_size)
+            TOTAL_SIZE=$(($TOTAL_SIZE + $ITEM_TOTAL_SIZE))
+        done <<< "$(echo "$ITEM_CONTAINER_REGISTRY_TAGS" | jq -r '.|map([.name])|.[]|@tsv')"
+    done <<< "$(echo "$PROJECT_CONTAINERS_REPOSITORIES_JSON" | jq -r '.|map([.id,.project_id])|.[]|@tsv')"
+fi
+# Format output defined by var $FORMAT_OUTPUT
+if [ "$FORMAT_OUTPUT" == "B" ]; then
+    TOTAL_SIZE_CALCULATED=$((($TOTAL_SIZE * 100)))
+elif [ "$FORMAT_OUTPUT" == "KB" ]; then
+    TOTAL_SIZE_CALCULATED=$((($TOTAL_SIZE * 100) /1024))
+elif [ "$FORMAT_OUTPUT" == "MB" ]; then
+    TOTAL_SIZE_CALCULATED=$((($TOTAL_SIZE * 100) /1024 / 1024))
+elif [ "$FORMAT_OUTPUT" == "GB" ]; then
+    TOTAL_SIZE_CALCULATED=$((($TOTAL_SIZE * 100) /1024 / 1024 / 1024))
+else
+    echo -n "${TOTAL_SIZE}"
+    exit 0
+fi
+TOTAL_SIZE_FORMATTED_INT="$(echo -n "${TOTAL_SIZE_CALCULATED}" | sed -E "s/^.{2}$/0/" | sed -E "s/.{2}$//")"
+TOTAL_SIZE_FORMATTED_DEC="$(echo -n "${TOTAL_SIZE_CALCULATED}" | sed -E "s/.+(.{2})$/\1/" | sed -E "s/0+$//")"
+TOTAL_SIZE_FORMATTED="$TOTAL_SIZE_FORMATTED_INT"
+if [ -z $TOTAL_SIZE_FORMATTED_DEC ]; then
+    TOTAL_SIZE_FORMATTED="${TOTAL_SIZE_FORMATTED_INT} ${FORMAT_OUTPUT}"
+else
+    TOTAL_SIZE_FORMATTED="${TOTAL_SIZE_FORMATTED_INT}.${TOTAL_SIZE_FORMATTED_DEC} ${FORMAT_OUTPUT}"
+fi
+# Just print the size of project container repositories
+echo -n "${TOTAL_SIZE_FORMATTED}"
