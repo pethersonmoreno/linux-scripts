@@ -1,0 +1,76 @@
+#!/bin/bash
+
+# check dependencies
+if [ -z $(type -p jq) ]; then
+    1>&2 printf "[ ERROR ] need 'jq' dependency to parse json."
+    exit 1
+fi
+
+if [ ! -p /dev/stdin ] && [ ! -f "$1" ]; then
+    if [ ! -z ${1+x} ]; then
+        echo "Input file doesn't exists"
+    else
+        echo "No input file / stream given!"
+    fi
+    exit 1
+fi
+if [ -p /dev/stdin ]; then
+    INPUT_DATA=$(cat /dev/stdin)
+else
+    INPUT_DATA=$(cat "${1}")
+fi
+# Verify required variables and parameters
+errorParameters=""
+if [ -z ${GITLAB_TOKEN+x} ]; then
+    msgErrorItem="Variable GITLAB_TOKEN is required"
+    errorParameters=$(echo "${errorParameters}\n${msgErrorItem}")
+fi
+if [ "$errorParameters" != "" ]; then
+    errorParameters=$(echo "$errorParameters" | sed -E "s/^\\\n//")
+    echo -e "Errors:\n$(echo -e "$errorParameters" | sed -E "s/^/ - /g")"
+    echo -e "\nTry '$0 --help' or '$0 --man' for more information."
+    exit 1
+fi
+
+RESULT_DATA="[]"
+while IFS=$'\t' read -r inputDataIndex; do
+    inputDataItem=$(echo "$INPUT_DATA" | jq ".[${inputDataIndex}]")
+    projectId=$(echo "$inputDataItem" | jq ".id")
+    PROJECT_CONTAINERS_REPOSITORIES_JSON=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/projects/${projectId}/registry/repositories?per_page=1000&page=1")
+    if [ $? -ne 0 ]; then
+        echo -e "Error: failed request to get project repositories"
+        exit 1
+    fi
+    resultProjContainersRepositories="[]"
+    if [[ $(echo "$PROJECT_CONTAINERS_REPOSITORIES_JSON" | jq -r '.|length') -gt 0 ]]; then
+        while IFS=$'\t' read -r itemContainerRegistryIndex; do
+            itemContainerRegistry=$(echo "$PROJECT_CONTAINERS_REPOSITORIES_JSON" | jq ".[${itemContainerRegistryIndex}]")
+            containerRegistryId="$(echo "$itemContainerRegistry" | jq .id)"
+
+            ITEM_CONTAINER_REGISTRY_TAGS=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/projects/${projectId}/registry/repositories/${containerRegistryId}/tags?per_page=1000&page=1")
+            if [ $? -ne 0 ]; then
+                echo -e "Error: failed request to get container registry tags"
+                exit 1
+            fi
+            containerRegistryTags="[]"
+            if [[ $(echo "$ITEM_CONTAINER_REGISTRY_TAGS" | jq -r '.|length') -gt 0 ]]; then
+                while IFS=$'\t' read -r containerRegistryTagIndex; do
+                    containerRegistryTag=$(echo "$ITEM_CONTAINER_REGISTRY_TAGS" | jq ".[${containerRegistryTagIndex}]")
+                    tagName="$(echo "$containerRegistryTag" | jq -r .name)"
+                    ITEM_CONTAINER_REGISTRY_TAG_DETAIL=$(curl -s -f --header "Authorization: Bearer $GITLAB_TOKEN" "https://gitlab.com/api/v4/projects/${projectId}/registry/repositories/${containerRegistryId}/tags/${tagName}")
+                    if [ $? -ne 0 ]; then
+                        echo -e "Error: failed request to get container registry tag detail"
+                        exit 1
+                    fi
+                    containerRegistryTags=$( (echo "$containerRegistryTags" ; echo "$ITEM_CONTAINER_REGISTRY_TAG_DETAIL") | jq '. + [input]')
+                done <<< "$(echo "$ITEM_CONTAINER_REGISTRY_TAGS" | jq -r '.|keys|map([.|tostring])|.[]|@tsv')"
+            fi
+            itemContainerRegistry=$( (echo "$itemContainerRegistry" ; echo "$containerRegistryTags") | jq ". + { tags: input }")
+            resultProjContainersRepositories=$( (echo "$resultProjContainersRepositories" ; echo "$itemContainerRegistry") | jq '. + [input]')
+        done <<< "$(echo "$PROJECT_CONTAINERS_REPOSITORIES_JSON" | jq -r ".|keys|map([.|tostring])|.[]|@tsv")"
+    fi
+    inputDataItem=$( (echo "$inputDataItem" ; echo "$resultProjContainersRepositories") | jq ". + { containersRepositories: input }")
+    RESULT_DATA=$( (echo "$RESULT_DATA" ; echo "$inputDataItem") | jq '. + [input]')
+done <<< "$(echo "$INPUT_DATA" | jq -r ".|keys|map([.|tostring])|.[]|@tsv")"
+
+echo "$RESULT_DATA" | jq .
