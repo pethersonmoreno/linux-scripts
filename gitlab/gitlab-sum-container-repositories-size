@@ -1,0 +1,119 @@
+#!/bin/bash
+
+# check dependencies
+if [ -z $(type -p jq) ]; then
+    1>&2 printf "[ ERROR ] need 'jq' dependency to parse json."
+    exit 1
+fi
+
+commandInfo=$(echo "COMMAND NAME
+       $0 - fill projects with the sum of its container repositories size (using tag detail size to sum it)
+
+SYNOPSIS
+       STREAM_TEXT_COMMAND | $0
+       
+       or
+
+       $0 FILE
+
+PARAMETERS
+       STREAM_TEXT_COMMAND [required if FILE param is not given]
+              Stream text command that generates JSON of projects with its container
+           repositories with its tags detail
+
+       FILE  [required if STREAM_TEXT_COMMAND param is not given]
+              File full path ou file relative path, with JSON of projects with its container
+           repositories with its tags detail
+
+OPTIONS
+       --help
+              display this help and exit
+
+       --man
+              display this help with less, like command man, then exit\n")
+
+if [ "$1" == "--help" ]; then
+    echo -e "${commandInfo}"
+    exit 0
+fi
+
+if [ "$1" == "--man" ]; then
+    echo -e "${commandInfo}" | less
+    exit 0
+fi
+
+if [ ! -p /dev/stdin ] && [ ! -f "$1" ]; then
+    if [ ! -z ${1+x} ]; then
+        echo "Input file doesn't exists"
+    else
+        echo "No input file / stream given!"
+    fi
+    exit 1
+elif [ -p /dev/stdin ] && [ ! -z ${1+x} ]; then
+    echo "Cannot give stream and input file, choose one."
+    exit 1
+fi
+
+if [ -p /dev/stdin ]; then
+    INPUT_DATA=$(cat /dev/stdin)
+    if [ -z ${1+x} ]; then
+        FORMAT_OUTPUT="" # Just bytes without B suffix
+    else
+        FORMAT_OUTPUT="$1"
+    fi
+else
+    INPUT_DATA=$(cat "${1}")
+    if [ -z ${2+x} ]; then
+        FORMAT_OUTPUT="" # Just bytes without B suffix
+    else
+        FORMAT_OUTPUT="$2"
+    fi
+fi
+
+while IFS=$'\t' read -r itemDataIndex; do
+    itemData=$(echo "$INPUT_DATA" | jq ".[${itemDataIndex}]")
+    projectId=$(echo "$itemData" | jq -r ".id")
+    pathWithNamespace=$(echo "$itemData" | jq -r ".path_with_namespace")
+    
+    projectTotalContainerImagesSize=0
+    while IFS=$'\t' read -r itemContainerRegistryIndex; do
+        itemContainerRegistry=$(echo "$itemData" | jq -r ".containersRepositories[${itemContainerRegistryIndex}]")
+        containerRegistryId="$(echo "$itemContainerRegistry" | jq .id)"
+        if [[ $(echo "$itemContainerRegistry" | jq -r '.tags|length') -le 0 ]]; then
+            continue
+        fi
+        while IFS=$'\t' read -r containerRegistryTagIndex; do
+            containerRegistryTagDetail=$(echo "$itemContainerRegistry" | jq ".tags[${containerRegistryTagIndex}]")
+            tagName="$(echo "$containerRegistryTagDetail" | jq -r .name)"
+            projectTagTotalSize="$(echo "$containerRegistryTagDetail" | jq -r .total_size)"
+
+            projectTotalContainerImagesSize=$(($projectTotalContainerImagesSize + $projectTagTotalSize))
+        done <<< "$(echo "$itemContainerRegistry" | jq -r '.tags|keys|map([.|tostring])|.[]|@tsv')"
+    done <<< "$(echo "$itemData" | jq -r ".containersRepositories|keys|map([.|tostring])|.[]|@tsv")"
+
+    if [ "$FORMAT_OUTPUT" == "B" ]; then
+        projectTotalContainerImagesSizeCalculated=$((($projectTotalContainerImagesSize * 100)))
+    elif [ "$FORMAT_OUTPUT" == "KB" ]; then
+        projectTotalContainerImagesSizeCalculated=$((($projectTotalContainerImagesSize * 100) /1024))
+    elif [ "$FORMAT_OUTPUT" == "MB" ]; then
+        projectTotalContainerImagesSizeCalculated=$((($projectTotalContainerImagesSize * 100) /1024 / 1024))
+    elif [ "$FORMAT_OUTPUT" == "GB" ]; then
+        projectTotalContainerImagesSizeCalculated=$((($projectTotalContainerImagesSize * 100) /1024 / 1024 / 1024))
+    else
+        projectTotalContainerImagesSizeFormatted="${projectTotalContainerImagesSize}"
+    fi
+    if [ -z ${projectTotalContainerImagesSizeFormatted+x} ]; then
+        projectTotalContainerImagesSizeInt="$(echo -n "${projectTotalContainerImagesSizeCalculated}" | sed -E "s/^.{1,2}$/0/" | sed -E "s/.{2}$//")"
+        projectTotalContainerImagesSizeIntDec="$(echo -n "${projectTotalContainerImagesSizeCalculated}" | sed -E "s/^(.{1})$/0\1/" | sed -E "s/.+(.{2})$/\1/" | sed -E "s/0+$//")"
+        if [ -z $projectTotalContainerImagesSizeIntDec ]; then
+            projectTotalContainerImagesSizeFormatted="${projectTotalContainerImagesSizeInt} ${FORMAT_OUTPUT}"
+        else
+            projectTotalContainerImagesSizeFormatted="${projectTotalContainerImagesSizeInt}.${projectTotalContainerImagesSizeIntDec} ${FORMAT_OUTPUT}"
+        fi
+    fi
+    itemData=$(echo "$itemData" | jq ".total_size = ${projectTotalContainerImagesSize} | .total_size_formatted = \"${projectTotalContainerImagesSizeFormatted}\"")
+    INPUT_DATA=$( (echo "$INPUT_DATA" ; echo "$itemData") | jq ".[${itemDataIndex}] = input")
+    unset projectTotalContainerImagesSizeFormatted
+done <<< "$(echo "$INPUT_DATA" | jq -r ".|keys|map([.|tostring])|.[]|@tsv")"
+
+echo "$INPUT_DATA" | jq .
