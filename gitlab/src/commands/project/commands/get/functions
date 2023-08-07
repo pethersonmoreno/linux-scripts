@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+function get-project () {
+    local gitlabToken="$1"
+    local projectParam="$2"
+    # Verify if parameter is number, then it is ID, or just full name
+    if [ "$((( $projectParam )) 2>/dev/null && echo $? || echo $?)" -eq 0 ]; then
+        SEARCH_BY="ID"
+        PROJECT_ID="$projectParam"
+        PROJECT_PATH="$PROJECT_ID"
+    else
+        SEARCH_BY="FULL_PATH"
+        PROJECT_FULL_PATH_PARSED=$(echo "$projectParam" | sed -E "s/\//%2F/g")
+        PROJECT_PATH="$PROJECT_FULL_PATH_PARSED"
+    fi
+
+    # Get project
+    PROJECT_JSON=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "https://gitlab.com/api/v4/projects/${PROJECT_PATH}")
+    if [ $? -ne 0 ]; then
+        echo -e "Error: failed request to get project"
+        exit 1
+    fi
+
+    # Just format json to view it in terminal
+    echo "$PROJECT_JSON" | jq .
+}
