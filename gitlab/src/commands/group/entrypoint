@@ -4,19 +4,19 @@ if [[ -L "$0" ]]; then
 else
     SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
 fi
-BASE_GITLAB_SCRIPTS_DIR="$SCRIPT_DIR"
+BASE_GITLAB_SCRIPTS_DIR="$SCRIPT_DIR/../.."
 source "${BASE_GITLAB_SCRIPTS_DIR}/common/start-scripts"
 
 while true; do
     case "$1" in
-        project|group) command=$1; shift 1; break ;;
+        get) command=$1; shift 1; break ;;
         help ) MANUAL="true"; break ;;
         -h|--help) HELP="true"; break ;;
         --) addErrorMessage "Invalid option '$1'"; shift ;;
         -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
         * )
             [ -z ${1+x} ] && break
-            addErrorMessage "Invalid command choice '$1', valid choices are: project"
+            addErrorMessage "Invalid command choice '$1', valid choices are: get"
             shift 1
         ;;
     esac
@@ -30,5 +30,5 @@ check-dependencies-parameters
 echo
 usage
 echo 
-echo "$commandEntrypoint: error: the following arguments are required: command"
+echo "$commandEntrypoint: error: the following arguments are required: subcommand"
 echo
