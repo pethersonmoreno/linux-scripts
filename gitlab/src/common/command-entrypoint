@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+function command-entrypoint () {
+    if [ -z ${1+x} ]; then
+        echo -n "${COMMAND_ENTRYPOINT}"
+    fi
+    if [[ "$COMMAND_ENTRYPOINT" != "" ]]; then
+        export COMMAND_ENTRYPOINT="${COMMAND_ENTRYPOINT} "
+    fi
+    export COMMAND_ENTRYPOINT="${COMMAND_ENTRYPOINT}$1"
+}

@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+function addErrorMessage() {
+    local messageError="$1"
+    export listErrorMessages=$(echo "${listErrorMessages}\n${messageError}")
+}
+function getErrorMessages () {
+    if [ "$listErrorMessages" != "" ]; then
+        echo "$listErrorMessages" | sed -E "s/^\\\n//"
+    fi
+    echo ""
+}
+function check-dependencies-parameters () {
+    local func_do_other_checks="$1"
+    # check dependencies
+    if [ -z $(type -p jq) ]; then
+        addErrorMessage "Need 'jq' dependency to parse json."
+    fi
+    if [ -z $(type -p curl) ]; then
+        addErrorMessage "Need 'curl' dependency to http/https requests."
+    fi
+    if [ -z ${GITLAB_TOKEN+x} ]; then
+        addErrorMessage "Variable GITLAB_TOKEN is required"
+    fi
+    # other checks
+    if [[ "$func_do_other_checks" != "" ]]; then
+        $func_do_other_checks
+    fi
+    errorMessages=$(getErrorMessages)
+    if [ "$errorMessages" != "" ]; then
+        echo
+        usage
+        echo
+        echo -e "$commandEntrypoint: errors:\n$(echo -e "$errorMessages" | sed -E "s/^/ - /g")"
+        echo
+        exit 1
+    fi
+}

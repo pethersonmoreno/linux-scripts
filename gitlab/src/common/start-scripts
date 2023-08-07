@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+source "$BASE_GITLAB_SCRIPTS_DIR/common/command-entrypoint"
+
+if [[ "$(command-entrypoint)" == "" ]]; then
+    commandClean=$(basename ${0})
+    if [ ! -z $(type -p "$commandClean") ]; then
+        command-entrypoint "$commandClean"
+    else
+        command-entrypoint "$0"
+    fi
+fi
+commandEntrypoint=$(command-entrypoint)
+
+source "$BASE_GITLAB_SCRIPTS_DIR/utils/check-dependencies-parameters"
+
+source "$BASE_GITLAB_SCRIPTS_DIR/common/usage"
+
+function help-output () {
+    echo
+    usage
+    echo
+    exit 0
+}
+function manual-output () {
+    cat "$SCRIPT_DIR/MANUAL.txt" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
+    exit 0
+}
+
+function use-command () {
+    local command="$1"
+    shift 1
+    command-entrypoint "${command}"
+    commandEntrypoint=$(command-entrypoint)
+    commandScript="$SCRIPT_DIR/commands/${command}/entrypoint"
+    unset command
+    source "$commandScript"
+    exit 0
+}

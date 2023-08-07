@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+function usage()
+{
+   cat << HEREDOC
+usage: $commandEntrypoint [options] <command> <subcommand> [<subcommand> ...] [parameters]
+To see help text, you can run:
+
+  $commandEntrypoint help
+  $commandEntrypoint <command> help
+  $commandEntrypoint <command> <subcommand> [<subcommand> ...] help
+HEREDOC
+}
