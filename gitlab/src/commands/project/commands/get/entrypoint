@@ -23,7 +23,7 @@ while true; do
 done
 function verifyParameters () {
     if [ -z ${PROJECT_PARAM+x} ]; then
-        addErrorMessage "Parameter PROJECT_PARAM is required"
+        addErrorMessage "Parameter project (--project) is required"
     fi
 }
 [[ "$MANUAL" == "true" ]] && manual-output

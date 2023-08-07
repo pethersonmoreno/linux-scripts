@@ -16,7 +16,7 @@ while true; do
         -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
         * )
             [ -z ${1+x} ] && break
-            addErrorMessage "Invalid command choice '$1', valid choices are: project"
+            addErrorMessage "Invalid command choice '$1', valid choices are: get"
             shift 1
         ;;
     esac
