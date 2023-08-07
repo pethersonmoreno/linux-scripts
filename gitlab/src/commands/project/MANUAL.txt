@@ -1,0 +1,29 @@
+_COMMAND_ENTRYPOINT_()
+
+NAME
+       _COMMAND_ENTRYPOINT_ -
+
+DESCRIPTION
+       Gitlab project is an structure of Gitlab that has an repository and 
+       other things related to it, as variables and other configurations
+       used on it.
+
+SYNOPSIS
+          _COMMAND_ENTRYPOINT_ [options] <command> [parameters]
+
+       Use command help for information on a specific command. The synopsis for
+       each command shows its parameters and their usage. Optional  parameters
+       are shown in square brackets.
+
+HELP COMMAND
+       help
+
+       display this help and exit
+
+GLOBAL OPTIONS
+       -h, --help
+
+       display an usage help message and exit
+
+AVAILABLE COMMANDS
+       o get
