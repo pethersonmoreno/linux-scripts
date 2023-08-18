@@ -10,17 +10,17 @@ function pglab () {
                 -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
                 * )
                     [ -z ${1+x} ] && break
-                    addErrorMessage "Invalid command choice '$1', valid choices are: project"
-                    shift 1
+                    addErrorMessage "Invalid command choice '$1', valid choices are: group, project"
+                    break
                 ;;
             esac
         done
     fi
     [[ "$HELP" == "true" ]] && pglab-help
     [[ "$USAGE" == "true" ]] && pglab-usage true true
-    check-dependencies-parameters
 
     [[ "$command" != "" ]] && use-command "$command" $@
+    check-dependencies-parameters
 
     echo
     pglab-raw-usage true true
@@ -60,11 +60,11 @@ EOF
 )" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
     exit 0
 }
-
-if [[ "$(basename "$(readlink -f -- "$0")")" == "pglab" ]]; then
+[[ "$PGLAB_IGNORE_SCRIPT_AUTOSTART" != "true" ]] && commandExecAutostart="$(basename "$(readlink -f -- "$0")" | sed -E "s/ /-/g")"
+if [[ "$commandExecAutostart" == "pglab" ]]; then
     [[ -L "$0" ]] \
         && SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )") \
         || SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
     source "${SCRIPT_DIR}/../common/all"
-    $(basename "$(readlink -f -- "$0")") $@
+    $commandExecAutostart $@
 fi

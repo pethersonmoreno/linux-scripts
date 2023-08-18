@@ -9,8 +9,16 @@ function use-command () {
     commandEntrypoint=$(command-entrypoint)
 
     unset command
-    commandExec=$(echo $commandEntrypoint | sed -E 's/ /-/g')
-    source "$SCRIPT_DIR/../commands/${commandExec}"
+
+    if [[ "$PGLAB_IGNORE_SCRIPT_AUTOSTART" == "true" ]]; then
+        otherCmdsEntrypoint="$(echo "$(echo $commandEntrypoint | sed -E 's/([^ ]+)//')")"
+        commandExec=$(echo "$(basename "$PGLAB_BASE_CMD_ENTRYPOINT")${otherCmdsEntrypoint}" | sed -E 's/ /-/g')
+    else
+        commandExec=$(echo "$commandEntrypoint" | sed -E 's/ /-/g')
+    fi
+    if [[ "$PGLAB_IGNORE_SCRIPT_AUTOSTART" != "true" ]]; then
+        source "$SCRIPT_DIR/../commands/${commandExec}"
+    fi
     $commandExec $@
     exit 0
 }

@@ -84,10 +84,11 @@ EOF
 )" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
     exit 0
 }
-if [[ "$(basename "$(readlink -f -- "$0")")" == "pglab-project-get" ]]; then
+[[ "$PGLAB_IGNORE_SCRIPT_AUTOSTART" != "true" ]] && commandExecAutostart="$(basename "$(readlink -f -- "$0")" | sed -E "s/ /-/g")"
+if [[ "$commandExecAutostart" == "pglab-project-get" ]]; then
     [[ -L "$0" ]] \
         && SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )") \
         || SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
     source "${SCRIPT_DIR}/../common/all"
-    $(basename "$(readlink -f -- "$0")") $@
+    $commandExecAutostart $@
 fi
