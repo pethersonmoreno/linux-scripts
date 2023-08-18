@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-function get-project () {
+function pglab-project-raw-get () {
     local gitlabToken="$1"
     local projectParam="$2"
     # Verify if parameter is number, then it is ID, or just full name
@@ -22,4 +22,31 @@ function get-project () {
 
     # Just format json to view it in terminal
     echo "$PROJECT_JSON" | jq .
+}
+function pglab-project-get () {
+    while true; do
+        case "$1" in
+            help) MANUAL="true"; break ;;
+            --project=*) PROJECT_PARAM="${1#*=}"; shift 1 ;;
+            --project) PROJECT_PARAM="$2";  shift 2 ;;
+            -h|--help) HELP="true"; break ;;
+            --) addErrorMessage "Invalid option '$1'"; shift ;;
+            -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
+            * )
+                [ -z ${1+x} ] && break
+                addErrorMessage "Invalid parameter with value '$1'"
+                shift 1
+            ;;
+        esac
+    done
+    function verifyParameters () {
+        if [ -z ${PROJECT_PARAM+x} ]; then
+            addErrorMessage "Parameter project (--project) is required"
+        fi
+    }
+    [[ "$MANUAL" == "true" ]] && manual-output
+    [[ "$HELP" == "true" ]] && help-output
+    check-dependencies-parameters verifyParameters
+
+    pglab-project-raw-get "$GITLAB_TOKEN" "$PROJECT_PARAM"
 }

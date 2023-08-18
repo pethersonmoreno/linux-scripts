@@ -31,8 +31,14 @@ function use-command () {
     shift 1
     command-entrypoint "${command}"
     commandEntrypoint=$(command-entrypoint)
-    commandScript="$SCRIPT_DIR/commands/${command}/entrypoint"
-    unset command
-    source "$commandScript"
+    if [[ "$command" == "get" ]]; then
+        source "$SCRIPT_DIR/commands/${command}/functions"
+        commandExec=$(echo $commandEntrypoint | sed -E 's/ /-/g')
+        $commandExec $@
+    else
+        commandScript="$SCRIPT_DIR/commands/${command}/entrypoint"
+        unset command
+        source "$commandScript"
+    fi
     exit 0
 }
