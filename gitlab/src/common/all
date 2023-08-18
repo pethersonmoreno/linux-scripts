@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+SCRIPT_DIR_COMMONS="$(dirname "${BASH_SOURCE[0]}")"
+while read FILE; do
+    source "${SCRIPT_DIR_COMMONS}/$FILE"
+done <<< "$(ls "${SCRIPT_DIR_COMMONS}" | grep -v -E "(all|start-main-command)")"
+source "${SCRIPT_DIR_COMMONS}/start-main-command"

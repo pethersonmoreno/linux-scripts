@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+if [[ "$(command-entrypoint)" == "" ]]; then
+    commandClean=$(basename ${0})
+    if [ ! -z $(type -p "$commandClean") ]; then
+        command-entrypoint "$commandClean"
+    else
+        command-entrypoint "$0"
+    fi
+fi
+commandEntrypoint=$(command-entrypoint)

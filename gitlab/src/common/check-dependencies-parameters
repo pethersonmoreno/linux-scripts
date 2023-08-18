@@ -11,6 +11,8 @@ function getErrorMessages () {
 }
 function check-dependencies-parameters () {
     local func_do_other_checks="$1"
+    USAGE_HAS_COMMAND="$2"
+    USAGE_HAS_SUBCOMMAND="$3"
     # check dependencies
     if [ -z $(type -p jq) ]; then
         addErrorMessage "Need 'jq' dependency to parse json."
@@ -28,7 +30,7 @@ function check-dependencies-parameters () {
     errorMessages=$(getErrorMessages)
     if [ "$errorMessages" != "" ]; then
         echo
-        pglab-raw-usage
+        pglab-raw-usage "$USAGE_HAS_COMMAND" "$USAGE_HAS_SUBCOMMAND"
         echo
         echo -e "$commandEntrypoint: errors:\n$(echo -e "$errorMessages" | sed -E "s/^/ - /g")"
         echo

@@ -1,41 +1,37 @@
 #!/usr/bin/env bash
-if [[ -L "$0" ]]; then
-    SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )")
-else
-    SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
-fi
-function pglab-project-raw-get () {
+function pglab-group-raw-get () {
     local gitlabToken="$1"
-    local projectParam="$2"
+    local groupParam="$2"
     # Verify if parameter is number, then it is ID, or just full name
-    if [ "$((( $projectParam )) 2>/dev/null && echo $? || echo $?)" -eq 0 ]; then
+    if [ "$((( $groupParam )) 2>/dev/null && echo $? || echo $?)" -eq 0 ]; then
         SEARCH_BY="ID"
-        PROJECT_ID="$projectParam"
-        PROJECT_PATH="$PROJECT_ID"
+        GROUP_ID="$groupParam"
+        GROUP_PATH="$GROUP_ID"
     else
         SEARCH_BY="FULL_PATH"
-        PROJECT_FULL_PATH_PARSED=$(echo "$projectParam" | sed -E "s/\//%2F/g")
-        PROJECT_PATH="$PROJECT_FULL_PATH_PARSED"
+        GROUP_FULL_PATH_PARSED=$(echo "$groupParam" | sed -E "s/\//%2F/g")
+        GROUP_PATH="$GROUP_FULL_PATH_PARSED"
     fi
 
-    # Get project
-    PROJECT_JSON=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "https://gitlab.com/api/v4/projects/${PROJECT_PATH}")
+    # Get group
+    GROUP_JSON=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "https://gitlab.com/api/v4/groups/${GROUP_PATH}?with_projects=false")
     if [ $? -ne 0 ]; then
-        echo -e "Error: failed request to get project"
+        echo -e "Error: failed request to get group"
         exit 1
     fi
 
     # Just format json to view it in terminal
-    echo "$PROJECT_JSON" | jq .
+    echo "$GROUP_JSON" | jq .
 }
-function pglab-project-get () {
+
+function pglab-group-get () {
     if [[ "$1" == "help" ]]; then
         HELP="true"
     else
         while true; do
             case "$1" in
-                --project=*) PROJECT_PARAM="${1#*=}"; shift 1 ;;
-                --project) PROJECT_PARAM="$2";  shift 2 ;;
+                --group=*) GROUP_PARAM="${1#*=}"; shift 1 ;;
+                --group) GROUP_PARAM="$2";  shift 2 ;;
                 --) addErrorMessage "Invalid option '$1'"; shift ;;
                 -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
                 * )
@@ -47,18 +43,18 @@ function pglab-project-get () {
         done
     fi
     function verifyParameters () {
-        if [ -z ${PROJECT_PARAM+x} ]; then
-            addErrorMessage "Parameter project (--project) is required"
+        if [ -z ${GROUP_PARAM+x} ]; then
+            addErrorMessage "Parameter group (--group) is required"
         fi
     }
-    [[ "$HELP" == "true" ]] && pglab-project-get-help
+    [[ "$HELP" == "true" ]] && pglab-group-get-help
     [[ "$USAGE" == "true" ]] && pglab-usage false false
     check-dependencies-parameters verifyParameters
 
-    pglab-project-raw-get "$GITLAB_TOKEN" "$PROJECT_PARAM"
+    pglab-group-raw-get "$GITLAB_TOKEN" "$GROUP_PARAM"
 }
 
-function pglab-project-get-help () {
+function pglab-group-get-help () {
     echo "$(cat <<EOF
 _COMMAND_ENTRYPOINT_()
 
@@ -89,3 +85,10 @@ EOF
 )" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
     exit 0
 }
+if [[ "$(basename "$(readlink -f -- "$0")")" == "pglab-group-get" ]]; then
+    [[ -L "$0" ]] \
+        && SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )") \
+        || SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
+    source "${SCRIPT_DIR}/../common/all"
+    $(basename "$(readlink -f -- "$0")") $@
+fi

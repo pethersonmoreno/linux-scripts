@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+function pglab-project () {
+    if [[ "$1" == "help" ]]; then
+        HELP="true"
+    else
+        while true; do
+            case "$1" in
+                get) command=$1; shift 1; break ;;
+                --) addErrorMessage "Invalid option '$1'"; shift ;;
+                -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
+                * )
+                    [ -z ${1+x} ] && break
+                    addErrorMessage "Invalid command choice '$1', valid choices are: get"
+                    shift 1
+                ;;
+            esac
+        done
+    fi
+    [[ "$HELP" == "true" ]] && pglab-project-help
+    [[ "$USAGE" == "true" ]] && pglab-usage true false
+    check-dependencies-parameters
+
+    [[ "$command" != "" ]] && use-command "$command" $@
+
+    echo
+    pglab-raw-usage true false
+    echo 
+    echo "$commandEntrypoint: error: the following arguments are required: subcommand"
+    echo
+}
+
+function pglab-project-help () {
+    echo "$(cat <<EOF
+_COMMAND_ENTRYPOINT_()
+
+NAME
+       _COMMAND_ENTRYPOINT_ -
+
+DESCRIPTION
+       Gitlab project is an structure of Gitlab that has an repository and 
+       other things related to it, as variables and other configurations
+       used on it.
+
+SYNOPSIS
+          _COMMAND_ENTRYPOINT_ [options] <command> [parameters]
+
+       Use command help for information on a specific command. The synopsis for
+       each command shows its parameters and their usage. Optional  parameters
+       are shown in square brackets.
+
+HELP COMMAND
+       help
+
+       display this help and exit
+
+GLOBAL OPTIONS
+       -h, --help
+
+       display an usage help message and exit
+
+AVAILABLE COMMANDS
+       o get
+
+EOF
+)" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
+    exit 0
+}
+if [[ "$(basename "$(readlink -f -- "$0")")" == "pglab-project" ]]; then
+    [[ -L "$0" ]] \
+        && SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )") \
+        || SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
+    source "${SCRIPT_DIR}/../common/all"
+    $(basename "$(readlink -f -- "$0")") $@
+fi

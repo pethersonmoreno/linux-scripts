@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+function use-command () {
+    [[ -L "$0" ]] && SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )")
+    [[ ! -L "$0" ]] && SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
+
+    local command="$1"
+    shift 1
+    command-entrypoint "${command}"
+    commandEntrypoint=$(command-entrypoint)
+
+    unset command
+    commandExec=$(echo $commandEntrypoint | sed -E 's/ /-/g')
+    source "$SCRIPT_DIR/../commands/${commandExec}"
+    $commandExec $@
+    exit 0
+}
