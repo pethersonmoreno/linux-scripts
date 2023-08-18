@@ -49,7 +49,7 @@ function pglab-group-get () {
     }
     [[ "$HELP" == "true" ]] && pglab-group-get-help
     [[ "$USAGE" == "true" ]] && pglab-usage false false
-    check-dependencies-parameters verifyParameters
+    check-dependencies-parameters verifyParameters false false
 
     pglab-group-raw-get "$GITLAB_TOKEN" "$GROUP_PARAM"
 }

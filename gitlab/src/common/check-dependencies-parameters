@@ -11,8 +11,8 @@ function getErrorMessages () {
 }
 function check-dependencies-parameters () {
     local func_do_other_checks="$1"
-    USAGE_HAS_COMMAND="$2"
-    USAGE_HAS_SUBCOMMAND="$3"
+    local USAGE_HAS_COMMAND="$2"
+    local USAGE_HAS_SUBCOMMAND="$3"
     # check dependencies
     if [ -z $(type -p jq) ]; then
         addErrorMessage "Need 'jq' dependency to parse json."

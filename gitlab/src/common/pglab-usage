@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-function pglab-raw-usage() {
+function pglab-raw-usage () {
   HAS_COMMAND="$1"
   HAS_SUBCOMMAND="$2"
   txtCmd=" <command>"

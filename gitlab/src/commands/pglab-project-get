@@ -48,7 +48,7 @@ function pglab-project-get () {
     }
     [[ "$HELP" == "true" ]] && pglab-project-get-help
     [[ "$USAGE" == "true" ]] && pglab-usage false false
-    check-dependencies-parameters verifyParameters
+    check-dependencies-parameters verifyParameters false false
 
     pglab-project-raw-get "$GITLAB_TOKEN" "$PROJECT_PARAM"
 }

@@ -20,7 +20,7 @@ function pglab () {
     [[ "$USAGE" == "true" ]] && pglab-usage true true
 
     [[ "$command" != "" ]] && use-command "$command" $@
-    check-dependencies-parameters
+    check-dependencies-parameters "" true true
 
     echo
     pglab-raw-usage true true
