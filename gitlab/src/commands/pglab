@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+function pglab () {
+    if [[ "$1" == "help" ]]; then
+        HELP="true"
+    else
+        while true; do
+            case "$1" in
+                project|group) command=$1; shift 1; break ;;
+                --) addErrorMessage "Invalid option '$1'"; shift ;;
+                -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
+                * )
+                    [ -z ${1+x} ] && break
+                    addErrorMessage "Invalid command choice '$1', valid choices are: project"
+                    shift 1
+                ;;
+            esac
+        done
+    fi
+    [[ "$HELP" == "true" ]] && pglab-help
+    [[ "$USAGE" == "true" ]] && pglab-usage true true
+    check-dependencies-parameters
+
+    [[ "$command" != "" ]] && use-command "$command" $@
+
+    echo
+    pglab-raw-usage true true
+    echo 
+    echo "$commandEntrypoint: error: the following arguments are required: command"
+    echo
+}
+
+function pglab-help () {
+    echo "$(cat <<EOF
+_COMMAND_ENTRYPOINT_()
+
+NAME
+       _COMMAND_ENTRYPOINT_ -
+
+DESCRIPTION
+       This Command Line Interface is a unified tools to manage your gitlab
+       groups and projects in gitlab.com.
+
+SYNOPSIS
+          _COMMAND_ENTRYPOINT_ [options] <command> <subcommand> [parameters]
+
+       Use command help for information on a specific command. The synopsis for
+       each command shows its parameters and their usage. Optional  parameters
+       are shown in square brackets.
+
+HELP COMMAND
+       help
+
+       display this help and exit
+
+AVAILABLE COMMANDS
+       o group
+       o project
+
+EOF
+)" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
+    exit 0
+}
+
+if [[ "$(basename "$(readlink -f -- "$0")")" == "pglab" ]]; then
+    [[ -L "$0" ]] \
+        && SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )") \
+        || SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
+    source "${SCRIPT_DIR}/../common/all"
+    $(basename "$(readlink -f -- "$0")") $@
+fi
