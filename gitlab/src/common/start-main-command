@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 if [[ "$(command-entrypoint)" == "" ]]; then
-    commandClean=$(basename ${0})
-    if [ ! -z $(type -p "$commandClean") ]; then
-        command-entrypoint "$commandClean"
+    if [[ "$(type -P "$(basename ${0})")" == "${0}" ]]; then
+        command-entrypoint "$(basename ${0})"
     else
         command-entrypoint "$0"
     fi
