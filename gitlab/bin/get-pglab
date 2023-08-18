@@ -13,9 +13,8 @@ echo >> /tmp/tmp-pglab-contents
 
 SCRIPT_DIR_SRC="/tmp/${repoName}-${ref}/gitlab/src"
 
-SCRIPT_DIR_BIN="$(dirname "${BASH_SOURCE[0]}")"
-SCRIPT_DIR_COMMANDS="${SCRIPT_DIR_BIN}/../src/commands"
-SCRIPT_DIR_COMMONS="${SCRIPT_DIR_BIN}/../src/common"
+SCRIPT_DIR_COMMANDS="${SCRIPT_DIR_SRC}/commands"
+SCRIPT_DIR_COMMONS="${SCRIPT_DIR_SRC}/common"
 while read FILE; do
     cat "${SCRIPT_DIR_COMMONS}/$FILE" | grep -v '#!/usr/bin/env bash' >> /tmp/tmp-pglab-contents
     echo >> /tmp/tmp-pglab-contents
