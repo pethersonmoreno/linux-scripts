@@ -1,12 +1,27 @@
 #!/usr/bin/env bash
-function usage()
-{
-   cat << HEREDOC
-usage: $commandEntrypoint [options] <command> <subcommand> [<subcommand> ...] [parameters]
+function pglab-raw-usage() {
+  HAS_COMMAND="$1"
+  HAS_SUBCOMMAND="$2"
+  txtCmd=" <command>"
+  txtCmdSubcmd="${txtCmd} [<subcommand> ...]"
+  if [[ "$HAS_COMMAND" == "true" ]]; then
+    txtUsageCmdSubcmd="${txtCmd}"
+    [[ "$HAS_SUBCOMMAND" == "true" ]] && txtUsageCmdSubcmd="${txtCmd} [<subcommand> ...]"
+  fi
+  cat << HEREDOC
+usage: $commandEntrypoint [options]${txtUsageCmdSubcmd} [parameters]
 To see help text, you can run:
 
   $commandEntrypoint help
-  $commandEntrypoint <command> help
-  $commandEntrypoint <command> <subcommand> [<subcommand> ...] help
 HEREDOC
+  if [[ "$HAS_COMMAND" == "true" ]]; then
+    echo "  ${commandEntrypoint}${txtCmd} help"
+    [[ "$HAS_SUBCOMMAND" == "true" ]] && echo "  ${commandEntrypoint}${txtCmdSubcmd} help"
+  fi
+}
+function pglab-usage() {
+  echo
+  pglab-raw-usage $@
+  echo
+  exit 0
 }

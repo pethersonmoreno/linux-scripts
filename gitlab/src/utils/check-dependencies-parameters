@@ -28,7 +28,7 @@ function check-dependencies-parameters () {
     errorMessages=$(getErrorMessages)
     if [ "$errorMessages" != "" ]; then
         echo
-        usage
+        pglab-raw-usage
         echo
         echo -e "$commandEntrypoint: errors:\n$(echo -e "$errorMessages" | sed -E "s/^/ - /g")"
         echo

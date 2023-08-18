@@ -7,22 +7,24 @@ fi
 BASE_GITLAB_SCRIPTS_DIR="$SCRIPT_DIR/../.."
 source "${BASE_GITLAB_SCRIPTS_DIR}/common/start-scripts"
 
-while true; do
-    case "$1" in
-        get) command=$1; shift 1; break ;;
-        help ) MANUAL="true"; break ;;
-        -h|--help) HELP="true"; break ;;
-        --) addErrorMessage "Invalid option '$1'"; shift ;;
-        -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
-        * )
-            [ -z ${1+x} ] && break
-            addErrorMessage "Invalid command choice '$1', valid choices are: get"
-            shift 1
-        ;;
-    esac
-done
-[[ "$MANUAL" == "true" ]] && manual-output
-[[ "$HELP" == "true" ]] && help-output
+if [[ "$1" == "help" ]]; then
+    HELP="true"
+else
+    while true; do
+        case "$1" in
+            get) command=$1; shift 1; break ;;
+            --) addErrorMessage "Invalid option '$1'"; shift ;;
+            -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
+            * )
+                [ -z ${1+x} ] && break
+                addErrorMessage "Invalid command choice '$1', valid choices are: get"
+                shift 1
+            ;;
+        esac
+    done
+fi
+[[ "$HELP" == "true" ]] && manual-output
+[[ "$USAGE" == "true" ]] && pglab-usage true false
 check-dependencies-parameters
 
 [[ "$command" != "" ]] && use-command "$command" $@

@@ -15,12 +15,6 @@ source "$BASE_GITLAB_SCRIPTS_DIR/utils/check-dependencies-parameters"
 
 source "$BASE_GITLAB_SCRIPTS_DIR/common/usage"
 
-function help-output () {
-    echo
-    usage
-    echo
-    exit 0
-}
 function manual-output () {
     cat "$SCRIPT_DIR/MANUAL.txt" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
     exit 0

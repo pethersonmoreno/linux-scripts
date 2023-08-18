@@ -19,10 +19,5 @@ HELP COMMAND
 
        display this help and exit
 
-GLOBAL OPTIONS
-       -h, --help
-
-       display an usage help message and exit
-
 AVAILABLE COMMANDS
        o project
