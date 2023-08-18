@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+orgOrUser="pethersonmoreno"
+repoName="linux-scripts"
+ref="master"
+curl -sJL "https://github.com/${orgOrUser}/${repoName}/archive/refs/heads/${ref}.zip" -o /tmp/pglab-source.zip
+unzip -qq /tmp/pglab-source.zip -d /tmp
+
+echo -n "" > /tmp/tmp-pglab-contents
+echo '#!/usr/bin/env bash' >> /tmp/tmp-pglab-contents
+echo >> /tmp/tmp-pglab-contents
+echo 'export PGLAB_IGNORE_SCRIPT_AUTOSTART="true"' >> /tmp/tmp-pglab-contents
+echo >> /tmp/tmp-pglab-contents
+
+SCRIPT_DIR_SRC="/tmp/${repoName}-${ref}/gitlab/src"
+
+SCRIPT_DIR_BIN="$(dirname "${BASH_SOURCE[0]}")"
+SCRIPT_DIR_COMMANDS="${SCRIPT_DIR_BIN}/../src/commands"
+SCRIPT_DIR_COMMONS="${SCRIPT_DIR_BIN}/../src/common"
+while read FILE; do
+    cat "${SCRIPT_DIR_COMMONS}/$FILE" | grep -v '#!/usr/bin/env bash' >> /tmp/tmp-pglab-contents
+    echo >> /tmp/tmp-pglab-contents
+done <<< "$(ls "${SCRIPT_DIR_COMMONS}" | grep -v -E "(all|start-main-command)")"
+cat "${SCRIPT_DIR_COMMONS}/start-main-command" | grep -v '#!/usr/bin/env bash' >> /tmp/tmp-pglab-contents
+echo >> /tmp/tmp-pglab-contents
+while read FILE; do
+    cat "${SCRIPT_DIR_COMMANDS}/$FILE" | grep -v '#!/usr/bin/env bash' >> /tmp/tmp-pglab-contents
+    echo >> /tmp/tmp-pglab-contents
+done <<< "$(ls "${SCRIPT_DIR_COMMANDS}")"
+
+echo 'export PGLAB_BASE_CMD_ENTRYPOINT="pglab"' >> /tmp/tmp-pglab-contents
+echo >> /tmp/tmp-pglab-contents
+echo 'pglab $@' >> /tmp/tmp-pglab-contents
+
+rm -rf "/tmp/${repoName}-${ref}"
+rm -f /tmp/pglab-source.zip
+
+if [ ! -z ${1+x} ]; then
+    pathFile="$1"
+    chmod +x /tmp/tmp-pglab-contents
+    cp -a /tmp/tmp-pglab-contents "$pathFile" 2>/dev/null \
+        || (\
+            echo "Need root access to this path $pathFile, using sudo command:" \
+            && sudo cp -a /tmp/tmp-pglab-contents "$pathFile")
+else
+    cat /tmp/tmp-pglab-contents
+fi
+rm -f /tmp/tmp-pglab-contents
