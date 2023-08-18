@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+export PGLAB_IGNORE_SCRIPT_AUTOSTART="true"
+
+SCRIPT_DIR_BIN="$(dirname "${BASH_SOURCE[0]}")"
+SCRIPT_DIR_COMMANDS="${SCRIPT_DIR_BIN}/../src/commands"
+SCRIPT_DIR_COMMONS="${SCRIPT_DIR_BIN}/../src/common"
+source "${SCRIPT_DIR_COMMONS}/all"
+while read FILE; do
+    source "${SCRIPT_DIR_COMMANDS}/$FILE"
+done <<< "$(ls "${SCRIPT_DIR_COMMANDS}")"
+
+export PGLAB_BASE_CMD_ENTRYPOINT="pglab"
+pglab $@
