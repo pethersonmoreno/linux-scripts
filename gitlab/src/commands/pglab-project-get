@@ -20,7 +20,6 @@ function pglab-project-raw-get () {
         exit 1
     fi
 
-    # Just format json to view it in terminal
     echo "$PROJECT_JSON" | jq .
 }
 function pglab-project-get () {
