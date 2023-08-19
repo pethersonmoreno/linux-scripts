@@ -7,7 +7,8 @@ SCRIPT_DIR_COMMONS="${SCRIPT_DIR_BIN}/../src/common"
 source "${SCRIPT_DIR_COMMONS}/all"
 while read FILE; do
     source "${SCRIPT_DIR_COMMANDS}/$FILE"
-done <<< "$(ls "${SCRIPT_DIR_COMMANDS}")"
+done <<< "$(ls "${SCRIPT_DIR_COMMANDS}" | xargs -E "\n" -I{} bash -c "[ -f "${SCRIPT_DIR_COMMANDS}/{}" ] && echo {}")"
 
 export PGLAB_BASE_CMD_ENTRYPOINT="pglab"
 pglab $@
+exit $?

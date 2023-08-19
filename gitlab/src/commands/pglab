@@ -20,14 +20,26 @@ function pglab () {
     fi
     if [[ "$restartEntrypoint" == "true" ]]; then
         cmdRestartEntrypoint="pglab $@"
-        bash -c "export COMMAND_ENTRYPOINT=pglab && unset pglab && $cmdRestartEntrypoint"
+        bash -c "unset PGLAB_IGNORE_SCRIPT_AUTOSTART && export COMMAND_ENTRYPOINT=pglab && unset pglab && $cmdRestartEntrypoint"
         return $?
     fi
-    [[ "$HELP" == "true" ]] && pglab-help
-    [[ "$USAGE" == "true" ]] && pglab-usage true true
+    if [[ "$HELP" == "true" ]]; then
+        pglab-help
+        return $?
+    fi
+    if [[ "$USAGE" == "true" ]]; then
+        pglab-usage true true
+        return $?
+    fi
 
-    [[ "$command" != "" ]] && use-command "$command" $@
+    if [[ "$command" != "" ]]; then
+        use-command "$command" $@
+        return $?
+    fi
     check-dependencies-parameters "" true true
+    if [ $? -ne 0 ]; then
+        return $?
+    fi
 
     echo
     pglab-raw-usage true true
@@ -65,7 +77,7 @@ AVAILABLE COMMANDS
 
 EOF
 )" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
-    exit 0
+    return $?
 }
 [[ "$PGLAB_IGNORE_SCRIPT_AUTOSTART" != "true" ]] && commandExecAutostart="$(basename "$(readlink -f -- "$0")" | sed -E "s/ /-/g")"
 if [[ "$commandExecAutostart" == "pglab" ]]; then
@@ -74,4 +86,5 @@ if [[ "$commandExecAutostart" == "pglab" ]]; then
         || SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
     source "${SCRIPT_DIR}/../common/all"
     $commandExecAutostart $@
+    exit $?
 fi

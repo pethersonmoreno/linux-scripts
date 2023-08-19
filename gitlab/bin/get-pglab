@@ -22,9 +22,15 @@ done <<< "$(ls "${SCRIPT_DIR_COMMONS}" | grep -v -E "(all|start-main-command)")"
 cat "${SCRIPT_DIR_COMMONS}/start-main-command" | grep -v '#!/usr/bin/env bash' >> /tmp/tmp-pglab-contents
 echo >> /tmp/tmp-pglab-contents
 while read FILE; do
+    SCRIPT_DIR_COMMAND_EXTENDED="${SCRIPT_DIR_COMMANDS}/${FILE}-extended"
+    if [ -d "$SCRIPT_DIR_COMMAND_EXTENDED" ]; then
+        while read fileExtendFile; do
+            cat "${SCRIPT_DIR_COMMAND_EXTENDED}/$fileExtendFile" | grep -v '#!/usr/bin/env bash' >> /tmp/tmp-pglab-contents
+        done <<< "$(ls "${SCRIPT_DIR_COMMAND_EXTENDED}" | xargs -E "\n" -I{} bash -c "[ -f "${SCRIPT_DIR_COMMAND_EXTENDED}/{}" ] && echo {}")"
+    fi
     cat "${SCRIPT_DIR_COMMANDS}/$FILE" | grep -v '#!/usr/bin/env bash' >> /tmp/tmp-pglab-contents
     echo >> /tmp/tmp-pglab-contents
-done <<< "$(ls "${SCRIPT_DIR_COMMANDS}")"
+done <<< "$(ls "${SCRIPT_DIR_COMMANDS}" | xargs -E "\n" -I{} bash -c "[ -f "${SCRIPT_DIR_COMMANDS}/{}" ] && echo {}")"
 
 echo 'export PGLAB_BASE_CMD_ENTRYPOINT="pglab"' >> /tmp/tmp-pglab-contents
 echo >> /tmp/tmp-pglab-contents

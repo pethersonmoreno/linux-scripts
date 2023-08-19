@@ -15,9 +15,10 @@ function pglab-project-raw-get () {
 
     # Get project
     PROJECT_JSON=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "https://gitlab.com/api/v4/projects/${PROJECT_PATH}")
-    if [ $? -ne 0 ]; then
+    exitCode="$?"
+    if [ $exitCode -ne 0 ]; then
         echo -e "Error: failed request to get project"
-        exit 1
+        return "$exitCode"
     fi
 
     echo "$PROJECT_JSON" | jq .
@@ -45,11 +46,21 @@ function pglab-project-get () {
             addErrorMessage "Parameter project (--project) is required"
         fi
     }
-    [[ "$HELP" == "true" ]] && pglab-project-get-help
-    [[ "$USAGE" == "true" ]] && pglab-usage false false
+    if [[ "$HELP" == "true" ]]; then
+        pglab-project-get-help
+        return $?
+    fi
+    if [[ "$USAGE" == "true" ]]; then
+        pglab-usage false false
+        return $?
+    fi
     check-dependencies-parameters verifyParameters false false
+    if [ $? -ne 0 ]; then
+        return $?
+    fi
 
     pglab-project-raw-get "$GITLAB_TOKEN" "$PROJECT_PARAM"
+    return $?
 }
 
 function pglab-project-get-help () {
@@ -81,7 +92,7 @@ OPTIONS
 
 EOF
 )" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
-    exit 0
+    return 0
 }
 [[ "$PGLAB_IGNORE_SCRIPT_AUTOSTART" != "true" ]] && commandExecAutostart="$(basename "$(readlink -f -- "$0")" | sed -E "s/ /-/g")"
 if [[ "$commandExecAutostart" == "pglab-project-get" ]]; then
@@ -90,4 +101,5 @@ if [[ "$commandExecAutostart" == "pglab-project-get" ]]; then
         || SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
     source "${SCRIPT_DIR}/../common/all"
     $commandExecAutostart $@
+    exit $?
 fi

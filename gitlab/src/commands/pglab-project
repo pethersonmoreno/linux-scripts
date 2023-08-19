@@ -16,14 +16,28 @@ function pglab-project () {
             esac
         done
     fi
-    [[ "$HELP" == "true" ]] && pglab-project-help
-    [[ "$USAGE" == "true" ]] && pglab-usage true false
-
-    [[ "$command" != "" ]] && use-command "$command" $@
+    if [[ "$HELP" == "true" ]]; then
+        pglab-project-help
+        return $?
+    fi
+    if [[ "$USAGE" == "true" ]]; then
+        pglab-usage true false
+        return $?
+    fi
+    if [[ "$command" != "" ]]; then
+        use-command "$command" $@
+        return $?
+    fi
     check-dependencies-parameters true false
+    if [ $? -ne 0 ]; then
+        return $?
+    fi
 
     echo
     pglab-raw-usage true false
+    if [ $? -ne 0 ]; then
+        return $?
+    fi
     echo 
     echo "$commandEntrypoint: error: the following arguments are required: subcommand"
     echo
@@ -64,7 +78,7 @@ AVAILABLE COMMANDS
 
 EOF
 )" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
-    exit 0
+    return $?
 }
 [[ "$PGLAB_IGNORE_SCRIPT_AUTOSTART" != "true" ]] && commandExecAutostart="$(basename "$(readlink -f -- "$0")" | sed -E "s/ /-/g")"
 if [[ "$commandExecAutostart" == "pglab-project" ]]; then
@@ -73,4 +87,5 @@ if [[ "$commandExecAutostart" == "pglab-project" ]]; then
         || SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
     source "${SCRIPT_DIR}/../common/all"
     $commandExecAutostart $@
+    exit $?
 fi

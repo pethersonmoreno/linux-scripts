@@ -1,99 +1,13 @@
 #!/usr/bin/env bash
-function pglab-project-raw-list-by-group-in-page () {
-    local gitlabToken="$1"
-    local groupParam="$2"
-    local per_page="$3"
-    local page="$4"
-    groupPath="$(pglab-get-number-or-url-encoded "$groupParam")"
-    # Try get projects in the group in the page
-    requestUrl="https://gitlab.com/api/v4/groups/${groupPath}/projects?with_shared=false&per_page=$per_page&page=$page"
-    listProjectsPage=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
-    # If failed try get projects in group
-    if [ $? -ne 0 ]; then
-        echo -e "Error: failed request to get projects in group"
-        exit 1
-    fi
+commandFunctionName="pglab-project-list"
+if [[ "$PGLAB_IGNORE_SCRIPT_AUTOSTART" != "true" ]]; then
+    SCRIPT_DIR_COMMANDS="$(dirname "${BASH_SOURCE[0]}")"
+    SCRIPT_DIR_COMMAND_EXTENDED="${SCRIPT_DIR_COMMANDS}/${commandFunctionName}-extended"
+    while read FILE; do
+        source "${SCRIPT_DIR_COMMAND_EXTENDED}/$FILE"
+    done <<< "$(ls "${SCRIPT_DIR_COMMAND_EXTENDED}" | xargs -E "\n" -I{} bash -c "[ -f "${SCRIPT_DIR_COMMAND_EXTENDED}/{}" ] && echo {}")"
+fi
 
-    echo "$listProjectsPage" | jq .
-}
-function pglab-project-raw-list-by-group () {
-    local gitlabToken="$1"
-    local groupParam="$2"
-    local per_page="$3"
-    # Get all projects in the group
-    listProjects="[]"
-    page=0
-    page_empty=false
-    while [ $page_empty != true ]; do
-        page=$(($page+1))
-        listProjectsPage=$(pglab-project-raw-list-by-group-in-page "$gitlabToken" "$groupParam" "$per_page" "$page")
-        listProjects=$(pglab-json-array-join "$listProjects" "$listProjectsPage")
-        page_empty=$(pglab-json-array-is-empty "$listProjectsPage")
-    done
-
-    echo "$listProjects" | jq .
-}
-function pglab-project-raw-list-by-group-recursive () {
-    local gitlabToken="$1"
-    local groupParam="$2"
-    local per_page="$3"
-
-    groupPath="$(pglab-get-number-or-url-encoded "$groupParam")"
-
-    pendingGroups="$groupParam"
-    listProjects="[]"
-    while [ "$pendingGroups" != "" ]; do
-        groupItem=$(echo "$pendingGroups" | sed -E "s/^([^ ]+)( .+)?/\1/")
-
-        pendingGroups=$(echo "$pendingGroups" | sed -E "s/^[^ ]+ ?//")
-
-        groupItemProjects=$(pglab-project-raw-list-by-group "$gitlabToken" "$groupItem" "$per_page")
-        listProjects=$(pglab-json-array-join "$listProjects" "$groupItemProjects")
-
-        # Get subgroups of the current group, it will be used to get projects in this group
-        groupSubgroups=$(pglab --restart-entrypoint group list-subgroups --parent-group "$groupItem")
-        # If found at least one subgroup, add it to pending groups to get projects
-        groupSubgroupsFullPaths=$(echo "$groupSubgroups" | jq -r "[.[].full_path]|join(\" \")")
-        if [ "$groupSubgroupsFullPaths" != "" ]; then
-            pendingGroups=$(echo "$pendingGroups $groupSubgroupsFullPaths" | sed -E "s/^[ ]+//")
-        fi
-    done
-    echo "$listProjects" | jq .
-}
-function pglab-project-raw-list-by-user-in-page () {
-    local gitlabToken="$1"
-    local userParam="$2"
-    local per_page="$3"
-    local page="$4"
-    userPath="$(pglab-get-number-or-url-encoded "$userParam")"
-    # Try get projects in the user in the page
-    requestUrl="https://gitlab.com/api/v4/users/${userPath}/projects?per_page=$per_page&page=$page"
-    listProjectsPage=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
-    if [ $? -ne 0 ]; then
-        echo -e "Error: failed request to get projects in user"
-        exit 1
-    fi
-
-    echo "$listProjectsPage" | jq .
-}
-function pglab-project-raw-list-by-user () {
-    local gitlabToken="$1"
-    local userParam="$2"
-    local per_page="$3"
-    userPath="$(pglab-get-number-or-url-encoded "$userParam")"
-    # Get all projects in the user
-    listProjects="[]"
-    page=0
-    page_empty=false
-    while [ $page_empty != true ]; do
-        page=$(($page+1))
-        listProjectsPage=$(pglab-project-raw-list-by-user-in-page "$gitlabToken" "$userParam" "$per_page" "$page")
-        listProjects=$(pglab-json-array-join "$listProjects" "$listProjectsPage")
-        page_empty=$(pglab-json-array-is-empty "$listProjectsPage")
-    done
-
-    echo "$listProjects" | jq .
-}
 function pglab-project-list () {
     local PER_PAGE=1000
     local PAGE=""
@@ -146,9 +60,18 @@ function pglab-project-list () {
             addErrorMessage "Cannot use page (--page) and recursive (--recursive) together"
         fi
     }
-    [[ "$HELP" == "true" ]] && pglab-project-list-help
-    [[ "$USAGE" == "true" ]] && pglab-usage false false
+    if [[ "$HELP" == "true" ]]; then
+        pglab-project-list-help
+        return $?
+    fi
+    if [[ "$USAGE" == "true" ]]; then
+        pglab-usage false false
+        return $?
+    fi
     check-dependencies-parameters verifyParameters false false
+    if [ $? -ne 0 ]; then
+        return $?
+    fi
 
     if [ ! -z "$GROUP_PARAM" ] || [ ! -z "$USER_PARAM" ] || [ ! -z "$NAMESPACE_PARAM" ]; then
         isGroup=false
@@ -161,75 +84,35 @@ function pglab-project-list () {
             [ -z "$GROUP_PARAM" ] && userParamToUse="$USER_PARAM"
         fi
         if [ ! -z "$PAGE" ]; then
-            [[ "$isGroup" == "true" ]] && pglab-project-raw-list-by-group-in-page "$GITLAB_TOKEN" "$groupParamToUse" "$PER_PAGE" "$PAGE"
-            [[ "$isGroup" != "true" ]] && pglab-project-raw-list-by-user-in-page "$GITLAB_TOKEN" "$userParamToUse" "$PER_PAGE" "$PAGE"
-            exit 0
+            if [[ "$isGroup" == "true" ]]; then
+                pglab-project-raw-list-by-group-in-page "$GITLAB_TOKEN" "$groupParamToUse" "$PER_PAGE" "$PAGE"
+            else
+                pglab-project-raw-list-by-user-in-page "$GITLAB_TOKEN" "$userParamToUse" "$PER_PAGE" "$PAGE"
+            fi
+            return $?
         fi
         if [[ "$isGroup" == "true" ]]; then
-            [[ "$isRecursive" == "true" ]] && pglab-project-raw-list-by-group-recursive "$GITLAB_TOKEN" "$groupParamToUse" "$PER_PAGE"
-            [[ "$isRecursive" != "true" ]] && pglab-project-raw-list-by-group "$GITLAB_TOKEN" "$groupParamToUse" "$PER_PAGE"
+            if [[ "$isRecursive" == "true" ]]; then
+                pglab-project-raw-list-by-group-recursive "$GITLAB_TOKEN" "$groupParamToUse" "$PER_PAGE"
+            else
+                pglab-project-raw-list-by-group "$GITLAB_TOKEN" "$groupParamToUse" "$PER_PAGE"
+            fi
+        else
+            pglab-project-raw-list-by-user "$GITLAB_TOKEN" "$userParamToUse" "$PER_PAGE"
         fi
-        [[ "$isGroup" != "true" ]] && pglab-project-raw-list-by-user "$GITLAB_TOKEN" "$userParamToUse" "$PER_PAGE"
-        exit 0
+        return $?
     fi
 
     pglab-usage false false
+    return $?
 }
 
-function pglab-project-list-help () {
-    echo "$(cat <<EOF
-_COMMAND_ENTRYPOINT_()
-
-NAME
-       _COMMAND_ENTRYPOINT_ -
-
-DESCRIPTION
-       Get list of projects by group, by user or by namespace (that is group or user in the same parameter)
-
-SYNOPSIS
-            _COMMAND_ENTRYPOINT_
-          [help]
-          [--group <value>]
-          [--user <value>]
-          [--namespace <value>]
-          [--per-page <value>]
-          [--page <value>]
-          [--recursive]
-
-HELP COMMAND
-       help
-
-       display this help and exit
-
-OPTIONS
-       --group (string|number)
-          The group to get its projects.
-
-          This parameter value is the group ID if it is a number, or if
-          it is not a number this parameter value is the group full path.
-
-       --user (string|number)
-          The user to get its projects.
-
-          This parameter value is the user ID if it is a number, or if
-          it is not a number this parameter value is the user full path.
-
-       --namespace (string|number)
-          The namespace (group or project) to get its projects.
-
-          This parameter value is the namespace (group or project) ID if
-          it is a number, or if it is not a number this parameter value
-          is the namespace (group or project) full path.
-
-EOF
-)" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
-    exit 0
-}
 [[ "$PGLAB_IGNORE_SCRIPT_AUTOSTART" != "true" ]] && commandExecAutostart="$(basename "$(readlink -f -- "$0")" | sed -E "s/ /-/g")"
-if [[ "$commandExecAutostart" == "pglab-project-list" ]]; then
+if [[ "$commandExecAutostart" == "$commandFunctionName" ]]; then
     [[ -L "$0" ]] \
         && SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )") \
         || SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
     source "${SCRIPT_DIR}/../common/all"
     $commandExecAutostart $@
+    exit $?
 fi

@@ -31,9 +31,12 @@ function check-dependencies-parameters () {
     if [ "$errorMessages" != "" ]; then
         echo
         pglab-raw-usage "$USAGE_HAS_COMMAND" "$USAGE_HAS_SUBCOMMAND"
+        if [ $? -ne 0 ]; then
+            return $?
+        fi
         echo
         echo -e "$commandEntrypoint: errors:\n$(echo -e "$errorMessages" | sed -E "s/^/ - /g")"
         echo
-        exit 1
+        return 1
     fi
 }

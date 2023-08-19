@@ -11,7 +11,7 @@ function use-command () {
     unset command
 
     if [[ "$PGLAB_IGNORE_SCRIPT_AUTOSTART" == "true" ]]; then
-        otherCmdsEntrypoint="$(echo "$(echo $commandEntrypoint | sed -E 's/([^ ]+)//')")"
+        otherCmdsEntrypoint="$(echo $commandEntrypoint | sed -E 's/([^ ]+)//')"
         commandExec=$(echo "$(basename "$PGLAB_BASE_CMD_ENTRYPOINT")${otherCmdsEntrypoint}" | sed -E 's/ /-/g')
     else
         commandExec=$(echo "$commandEntrypoint" | sed -E 's/ /-/g')
@@ -20,5 +20,5 @@ function use-command () {
         source "$SCRIPT_DIR/../commands/${commandExec}"
     fi
     $commandExec $@
-    exit 0
+    return $?
 }

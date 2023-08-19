@@ -15,9 +15,10 @@ function pglab-group-raw-get () {
 
     # Get group
     GROUP_JSON=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "https://gitlab.com/api/v4/groups/${GROUP_PATH}?with_projects=false")
-    if [ $? -ne 0 ]; then
-        echo -e "Error: failed request to get group"
-        exit 1
+    exitCode="$?"
+    if [ $exitCode -ne 0 ]; then
+        echo -e "Error: failed request to get group $exitCode"
+        return "$exitCode"
     fi
 
     echo "$GROUP_JSON" | jq .
@@ -46,11 +47,21 @@ function pglab-group-get () {
             addErrorMessage "Parameter group (--group) is required"
         fi
     }
-    [[ "$HELP" == "true" ]] && pglab-group-get-help
-    [[ "$USAGE" == "true" ]] && pglab-usage false false
+    if [[ "$HELP" == "true" ]]; then
+        pglab-group-get-help
+        return $?
+    fi
+    if [[ "$USAGE" == "true" ]]; then
+        pglab-usage false false
+        return $?
+    fi
     check-dependencies-parameters verifyParameters false false
+    if [ $? -ne 0 ]; then
+        return $?
+    fi
 
     pglab-group-raw-get "$GITLAB_TOKEN" "$GROUP_PARAM"
+    return $?
 }
 
 function pglab-group-get-help () {
@@ -82,7 +93,7 @@ OPTIONS
 
 EOF
 )" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
-    exit 0
+    return $?
 }
 [[ "$PGLAB_IGNORE_SCRIPT_AUTOSTART" != "true" ]] && commandExecAutostart="$(basename "$(readlink -f -- "$0")" | sed -E "s/ /-/g")"
 if [[ "$commandExecAutostart" == "pglab-group-get" ]]; then
@@ -91,4 +102,5 @@ if [[ "$commandExecAutostart" == "pglab-group-get" ]]; then
         || SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
     source "${SCRIPT_DIR}/../common/all"
     $commandExecAutostart $@
+    exit $?
 fi

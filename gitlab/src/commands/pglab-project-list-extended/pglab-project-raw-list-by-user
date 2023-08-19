@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+function pglab-project-raw-list-by-user () {
+    local gitlabToken="$1"
+    local userParam="$2"
+    local per_page="$3"
+    userPath="$(pglab-get-number-or-url-encoded "$userParam")"
+    # Get all projects in the user
+    listProjects="[]"
+    page=0
+    page_empty=false
+    while [ $page_empty != true ]; do
+        page=$(($page+1))
+        listProjectsPage=$(pglab-project-raw-list-by-user-in-page "$gitlabToken" "$userParam" "$per_page" "$page")
+        if [ $? -ne 0 ]; then
+            return $?
+        fi
+        listProjects=$(pglab-json-array-join "$listProjects" "$listProjectsPage")
+        page_empty=$(pglab-json-array-is-empty "$listProjectsPage")
+    done
+
+    echo "$listProjects" | jq .
+}
