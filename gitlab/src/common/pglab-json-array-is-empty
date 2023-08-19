@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+function pglab-json-array-is-empty () {
+  array="$1"
+
+  arrayLength=$(echo "$array" | jq ".|length")
+  [[ $arrayLength -eq 0 ]] && echo -n "true" && exit 0
+  echo -n "false"
+}

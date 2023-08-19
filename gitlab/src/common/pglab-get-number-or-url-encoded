@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+function pglab-get-number-or-url-encoded () {
+  PARAM="$1"
+
+  # Verify if parameter is number, then it is ID, or just full name
+  if [ "$((( $PARAM )) 2>/dev/null && echo $? || echo $?)" -eq 0 ]; then
+    echo -n "$PARAM"
+  else
+    echo -n "$PARAM" | sed -E "s/\//%2F/g"
+  fi
+}

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+function pglab-json-array-join () {
+  arrayA="$1"
+  arrayB="$2"
+
+  (echo "$arrayA" ; echo "$arrayB") | jq '. + input'
+}
