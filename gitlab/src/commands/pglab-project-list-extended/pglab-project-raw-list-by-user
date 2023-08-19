@@ -3,11 +3,12 @@ function pglab-project-raw-list-by-user () {
     local gitlabToken="$1"
     local userParam="$2"
     local per_page="$3"
-    userPath="$(pglab-get-number-or-url-encoded "$userParam")"
+    local userPath="$(pglab-get-number-or-url-encoded "$userParam")"
+    local listProjects="[]"
+    local page=0
+    local page_empty=false
+    local listProjectsPage=""
     # Get all projects in the user
-    listProjects="[]"
-    page=0
-    page_empty=false
     while [ $page_empty != true ]; do
         page=$(($page+1))
         listProjectsPage=$(pglab-project-raw-list-by-user-in-page "$gitlabToken" "$userParam" "$per_page" "$page")

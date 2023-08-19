@@ -4,12 +4,12 @@ function pglab-group-raw-list-subgroups-in-page () {
     local parentGroupParam="$2"
     local per_page="$3"
     local page="$4"
-    parentGroupPath="$(pglab-get-number-or-url-encoded "$parentGroupParam")"
+    local parentGroupPath="$(pglab-get-number-or-url-encoded "$parentGroupParam")"
     # Try get subgroups in the parent group in the page
-    requestUrl="https://gitlab.com/api/v4/groups/${parentGroupPath}/subgroups?per_page=$per_page&page=$page"
-    listSubgroupsPage=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
+    local requestUrl="https://gitlab.com/api/v4/groups/${parentGroupPath}/subgroups?per_page=$per_page&page=$page"
+    local listSubgroupsPage=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
     # If failed try get subgroups in a parent group
-    exitCode="$?"
+    local exitCode="$?"
     if [ $exitCode -ne 0 ]; then
         echo -e "Error: failed request to get subgroups in a parent group"
         return "$exitCode"
@@ -21,10 +21,11 @@ function pglab-group-raw-list-subgroups () {
     local gitlabToken="$1"
     local parentGroupParam="$2"
     local per_page="$3"
+    local listSubgroups="[]"
+    local page=0
+    local page_empty=false
+    local listSubgroupsPage=""
     # Get all subgroups in the group
-    listSubgroups="[]"
-    page=0
-    page_empty=false
     while [ $page_empty != true ]; do
         page=$(($page+1))
         listSubgroupsPage=$(pglab-group-raw-list-subgroups-in-page "$gitlabToken" "$parentGroupParam" "$per_page" "$page")

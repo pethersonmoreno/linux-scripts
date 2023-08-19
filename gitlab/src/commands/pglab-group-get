@@ -2,20 +2,10 @@
 function pglab-group-raw-get () {
     local gitlabToken="$1"
     local groupParam="$2"
-    # Verify if parameter is number, then it is ID, or just full name
-    if [ "$((( $groupParam )) 2>/dev/null && echo $? || echo $?)" -eq 0 ]; then
-        SEARCH_BY="ID"
-        GROUP_ID="$groupParam"
-        GROUP_PATH="$GROUP_ID"
-    else
-        SEARCH_BY="FULL_PATH"
-        GROUP_FULL_PATH_PARSED=$(echo "$groupParam" | sed -E "s/\//%2F/g")
-        GROUP_PATH="$GROUP_FULL_PATH_PARSED"
-    fi
-
+    local groupPath="$(pglab-get-number-or-url-encoded "$groupParam")"
     # Get group
-    GROUP_JSON=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "https://gitlab.com/api/v4/groups/${GROUP_PATH}?with_projects=false")
-    exitCode="$?"
+    local GROUP_JSON=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "https://gitlab.com/api/v4/groups/${groupPath}?with_projects=false")
+    local exitCode="$?"
     if [ $exitCode -ne 0 ]; then
         echo -e "Error: failed request to get group $exitCode"
         return "$exitCode"

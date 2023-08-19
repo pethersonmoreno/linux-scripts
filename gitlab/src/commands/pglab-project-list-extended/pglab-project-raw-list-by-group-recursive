@@ -3,11 +3,13 @@ function pglab-project-raw-list-by-group-recursive () {
     local gitlabToken="$1"
     local groupParam="$2"
     local per_page="$3"
-
-    groupPath="$(pglab-get-number-or-url-encoded "$groupParam")"
-
-    pendingGroups="$groupParam"
-    listProjects="[]"
+    local groupPath="$(pglab-get-number-or-url-encoded "$groupParam")"
+    local pendingGroups="$groupParam"
+    local listProjects="[]"
+    local groupItem=""
+    local groupItemProjects=""
+    local groupSubgroups=""
+    local groupSubgroupsFullPaths=""
     while [ "$pendingGroups" != "" ]; do
         groupItem=$(echo "$pendingGroups" | sed -E "s/^([^ ]+)( .+)?/\1/")
 
