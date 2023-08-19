@@ -5,12 +5,12 @@ function pglab-group () {
     else
         while true; do
             case "$1" in
-                get) command=$1; shift 1; break ;;
+                get|list-subgroups) command=$1; shift 1; break ;;
                 --) addErrorMessage "Invalid option '$1'"; shift ;;
                 -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
                 * )
                     [ -z ${1+x} ] && break
-                    addErrorMessage "Invalid command choice '$1', valid choices are: get"
+                    addErrorMessage "Invalid command choice '$1', valid choices are: get, list-subgroups"
                     break
                 ;;
             esac
@@ -55,6 +55,7 @@ HELP COMMAND
 
 AVAILABLE COMMANDS
        o get
+       o list-subgroups
 
 EOF
 )" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
