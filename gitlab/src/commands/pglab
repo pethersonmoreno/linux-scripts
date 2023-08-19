@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 function pglab () {
+    restartEntrypoint=false
     if [[ "$1" == "help" ]]; then
         HELP="true"
     else
         while true; do
             case "$1" in
                 project|group) command=$1; shift 1; break ;;
+                --restart-entrypoint) restartEntrypoint=true; shift 1; break ;;
                 --) addErrorMessage "Invalid option '$1'"; shift ;;
                 -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
                 * )
@@ -15,6 +17,11 @@ function pglab () {
                 ;;
             esac
         done
+    fi
+    if [[ "$restartEntrypoint" == "true" ]]; then
+        cmdRestartEntrypoint="pglab $@"
+        bash -c "export COMMAND_ENTRYPOINT=pglab && unset pglab && $cmdRestartEntrypoint"
+        return $?
     fi
     [[ "$HELP" == "true" ]] && pglab-help
     [[ "$USAGE" == "true" ]] && pglab-usage true true

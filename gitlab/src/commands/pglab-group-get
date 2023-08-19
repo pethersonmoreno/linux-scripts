@@ -20,7 +20,6 @@ function pglab-group-raw-get () {
         exit 1
     fi
 
-    # Just format json to view it in terminal
     echo "$GROUP_JSON" | jq .
 }
 
@@ -62,12 +61,12 @@ NAME
        _COMMAND_ENTRYPOINT_ -
 
 DESCRIPTION
-       Get detailed information for an Gitlab project.
+       Get detailed information for an Gitlab group.
 
 SYNOPSIS
             _COMMAND_ENTRYPOINT_
           [help]
-          --project <value>
+          --group <value>
 
 HELP COMMAND
        help
@@ -75,11 +74,11 @@ HELP COMMAND
        display this help and exit
 
 OPTIONS
-       --project (string|number)
-          The project to get detailed information.
+       --group (string|number)
+          The group to get detailed information.
 
-          This parameter value is the project ID if it is a number, or if
-          it is not a number this parameter value is the project full path.
+          This parameter value is the group ID if it is a number, or if
+          it is not a number this parameter value is the group full path.
 
 EOF
 )" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
