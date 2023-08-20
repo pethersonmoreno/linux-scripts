@@ -18,6 +18,7 @@ HEREDOC
     echo "  ${commandEntrypoint}${txtCmd} help"
     [[ "$HAS_SUBCOMMAND" == "true" ]] && echo "  ${commandEntrypoint}${txtCmdSubcmd} help"
   fi
+  return 0
 }
 function pglab-usage() {
   echo

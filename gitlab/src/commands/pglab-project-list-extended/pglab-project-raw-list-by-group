@@ -15,6 +15,10 @@ function pglab-project-raw-list-by-group () {
         if [ $exitCode -ne 0 ]; then
             return $exitCode
         fi
+        exitCode=$?
+        if [ $exitCode -ne 0 ]; then
+            return $exitCode
+        fi
         listProjects=$(pglab-json-array-join "$listProjects" "$listProjectsPage")
         page_empty=$(pglab-json-array-is-empty "$listProjectsPage")
     done

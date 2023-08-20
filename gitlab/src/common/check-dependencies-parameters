@@ -20,7 +20,7 @@ function check-dependencies-parameters () {
     if [ -z $(type -p curl) ]; then
         addErrorMessage "Need 'curl' dependency to http/https requests."
     fi
-    if [ -z ${GITLAB_TOKEN+x} ]; then
+    if [ -z "${GITLAB_TOKEN}" ]; then
         addErrorMessage "Variable GITLAB_TOKEN is required"
     fi
     # other checks

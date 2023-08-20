@@ -1,59 +1,57 @@
 #!/usr/bin/env bash
-function pglab-group-raw-list-subgroups-in-page () {
+function pglab-project-container-registry-raw-list-in-page () {
     local gitlabToken="$1"
-    local parentGroupParam="$2"
+    local projectParam="$2"
     local per_page="$3"
     local page="$4"
-    local parentGroupPath="$(pglab-get-number-or-url-encoded "$parentGroupParam")"
+    local projectPath="$(pglab-get-number-or-url-encoded "$projectParam")"
     local requestUrl=""
-    local listSubgroupsPage=""
+    local listProjectContainerRegistriesPage=""
     local exitCode=""
-    # Try get subgroups in the parent group in the page
-    requestUrl="https://gitlab.com/api/v4/groups/${parentGroupPath}/subgroups?per_page=$per_page&page=$page"
-    listSubgroupsPage=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
-    # If failed try get subgroups in a parent group
+    requestUrl="https://gitlab.com/api/v4/projects/${projectPath}/registry/repositories?per_page=$per_page&page=$page"
+    listProjectContainerRegistriesPage=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
     exitCode="$?"
     if [ $exitCode -ne 0 ]; then
-        >&2 echo -e "Error: failed request to get subgroups in a parent group"
+        >&2 echo -e "Error: failed request to get container registries in a project"
         return "$exitCode"
     fi
 
-    echo "$listSubgroupsPage" | jq .
+    echo "$listProjectContainerRegistriesPage" | jq .
 }
-function pglab-group-raw-list-subgroups () {
+function pglab-project-container-registry-raw-list () {
     local gitlabToken="$1"
-    local parentGroupParam="$2"
+    local projectParam="$2"
     local per_page="$3"
-    local listSubgroups="[]"
+    local listProjectContainerRegistries="[]"
     local page=0
     local page_empty=false
-    local listSubgroupsPage=""
-    # Get all subgroups in the group
+    local listProjectContainerRegistriesPage=""
     while [ $page_empty != true ]; do
         page=$(($page+1))
-        listSubgroupsPage=$(pglab-group-raw-list-subgroups-in-page "$gitlabToken" "$parentGroupParam" "$per_page" "$page")
+        listProjectContainerRegistriesPage=$(pglab-project-container-registry-raw-list-in-page "$gitlabToken" "$projectParam" "$per_page" "$page")
         exitCode=$?
         if [ $exitCode -ne 0 ]; then
             return $exitCode
         fi
-        listSubgroups=$(pglab-json-array-join "$listSubgroups" "$listSubgroupsPage")
-        page_empty=$(pglab-json-array-is-empty "$listSubgroupsPage")
+        listProjectContainerRegistries=$(pglab-json-array-join "$listProjectContainerRegistries" "$listProjectContainerRegistriesPage")
+        page_empty=$(pglab-json-array-is-empty "$listProjectContainerRegistriesPage")
     done
 
-    echo "$listSubgroups" | jq .
+    echo "$listProjectContainerRegistries" | jq .
 }
 
-function pglab-group-list-subgroups () {
+function pglab-project-container-registry-list () {
     local PER_PAGE=1000
     local PAGE=""
     local HELP=""
+    local PROJECT_PARAM=""
     if [[ "$1" == "help" ]]; then
         HELP="true"
     else
         while true; do
             case "$1" in
-                --parent-group=*) PARENT_GROUP_PARAM="${1#*=}"; shift 1 ;;
-                --parent-group) PARENT_GROUP_PARAM="$2";  shift 2 ;;
+                --project=*) PROJECT_PARAM="${1#*=}"; shift 1 ;;
+                --project) PROJECT_PARAM="$2";  shift 2 ;;
                 --per-page=*) PER_PAGE="${1#*=}"; shift 1 ;;
                 --per-page) PER_PAGE="$2";  shift 2 ;;
                 --page=*) PAGE="${1#*=}"; shift 1 ;;
@@ -69,12 +67,12 @@ function pglab-group-list-subgroups () {
         done
     fi
     function verifyParameters () {
-        if [ -z "${PARENT_GROUP_PARAM}" ]; then
-            addErrorMessage "Parameter parent group (--parent-group) is required"
+        if [ -z "${PROJECT_PARAM}" ]; then
+            addErrorMessage "Parameter project (--project) is required"
         fi
     }
     if [[ "$HELP" == "true" ]]; then
-        pglab-group-list-subgroups-help
+        pglab-project-container-registry-list-help
         return $?
     fi
     if [[ "$USAGE" == "true" ]]; then
@@ -88,14 +86,14 @@ function pglab-group-list-subgroups () {
     fi
 
     if [ ! -z "$PAGE" ]; then
-        pglab-group-raw-list-subgroups-in-page "$GITLAB_TOKEN" "$PARENT_GROUP_PARAM" "$PER_PAGE" "$PAGE"
+        pglab-project-container-registry-raw-list-in-page "$GITLAB_TOKEN" "$PROJECT_PARAM" "$PER_PAGE" "$PAGE"
         return $?
     fi
-    pglab-group-raw-list-subgroups "$GITLAB_TOKEN" "$PARENT_GROUP_PARAM" "$PER_PAGE"
+    pglab-project-container-registry-raw-list "$GITLAB_TOKEN" "$PROJECT_PARAM" "$PER_PAGE"
     return $?
 }
 
-function pglab-group-list-subgroups-help () {
+function pglab-project-container-registry-list-help () {
     echo "$(cat <<EOF
 _COMMAND_ENTRYPOINT_()
 
@@ -103,12 +101,12 @@ NAME
        _COMMAND_ENTRYPOINT_ -
 
 DESCRIPTION
-       Get a list of subgroups in a parent group.
+       Get a list of container repositories in a project
 
 SYNOPSIS
             _COMMAND_ENTRYPOINT_
           [help]
-          --parent-group <value>
+          --project <value>
 
 HELP COMMAND
        help
@@ -116,18 +114,18 @@ HELP COMMAND
        display this help and exit
 
 OPTIONS
-       --parent-group (string|number)
-          The parent group to get its subgroups.
+       --project (string|number)
+          The project to get container registries.
 
-          This parameter value is the parent group ID if it is a number, or if
-          it is not a number this parameter value is the parent group full path.
+          This parameter value is the project ID if it is a number, or if
+          it is not a number this parameter value is the project full path.
 
 EOF
 )" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
     return $?
 }
 [[ "$PGLAB_IGNORE_SCRIPT_AUTOSTART" != "true" ]] && commandExecAutostart="$(basename "$(readlink -f -- "$0")" | sed -E "s/ /-/g")"
-if [[ "$commandExecAutostart" == "pglab-group-list-subgroups" ]]; then
+if [[ "$commandExecAutostart" == "pglab-project-container-registry-list" ]]; then
     [[ -L "$0" ]] \
         && SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )") \
         || SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"

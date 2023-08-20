@@ -35,7 +35,7 @@ function pglab-project-get () {
         done
     fi
     function verifyParameters () {
-        if [ -z ${PROJECT_PARAM+x} ]; then
+        if [ -z "${PROJECT_PARAM}" ]; then
             addErrorMessage "Parameter project (--project) is required"
         fi
     }
