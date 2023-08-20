@@ -6,12 +6,12 @@ function pglab-project-container-registry () {
     else
         while true; do
             case "$1" in
-                list|list-tags) command=$1; shift 1; break ;;
+                list|list-tags|get-tag) command=$1; shift 1; break ;;
                 --) addErrorMessage "Invalid option '$1'"; shift ;;
                 -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
                 * )
                     [ -z ${1+x} ] && break
-                    addErrorMessage "Invalid command choice '$1', valid choices are: list, list-tags"
+                    addErrorMessage "Invalid command choice '$1', valid choices are: list, list-tags, get-tag"
                     break
                 ;;
             esac

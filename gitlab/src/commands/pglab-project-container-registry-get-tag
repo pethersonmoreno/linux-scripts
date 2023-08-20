@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+function pglab-project-container-registry-raw-get-tag () {
+    local gitlabToken="$1"
+    local projectParam="$2"
+    local containerRegistryIdParam="$3"
+    local tagNameParam="$4"
+    local projectPath="$(pglab-get-number-or-url-encoded "$projectParam")"
+    local requestDetailUrl=""
+    local exitCode=""
+    requestDetailUrl="https://gitlab.com/api/v4/projects/${projectPath}/registry/repositories/${containerRegistryIdParam}/tags/${tagNameParam}"
+    tagDetail=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestDetailUrl}")
+    exitCode="$?"
+    if [ $exitCode -ne 0 ]; then
+        >&2 echo -e "Error: failed request to get tag detail in a container repository of a project"
+        return "$exitCode"
+    fi
+    echo "$tagDetail" | jq .
+    return $?
+}
+
+function pglab-project-container-registry-get-tag () {
+    local HELP=""
+    local PROJECT_PARAM=""
+    local containerRegistryIdParam=""
+    local tagNameParam=""
+    if [[ "$1" == "help" ]]; then
+        HELP="true"
+    else
+        while true; do
+            case "$1" in
+                --project=*) PROJECT_PARAM="${1#*=}"; shift 1 ;;
+                --project) PROJECT_PARAM="$2"; shift 2 ;;
+                --container-registry=*) containerRegistryIdParam="${1#*=}"; shift 1 ;;
+                --container-registry) containerRegistryIdParam="$2"; shift 2 ;;
+                --tag=*) tagNameParam="${1#*=}"; shift 1 ;;
+                --tag) tagNameParam="$2"; shift 2 ;;
+                --) addErrorMessage "Invalid option '$1'"; shift ;;
+                -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
+                * )
+                    [ -z ${1+x} ] && break
+                    addErrorMessage "Invalid parameter with value '$1'"
+                    shift 1
+                ;;
+            esac
+        done
+    fi
+    function verifyParameters () {
+        if [ -z "${PROJECT_PARAM}" ]; then
+            addErrorMessage "Parameter project (--project) is required"
+        fi
+        if [ -z "${containerRegistryIdParam}" ]; then
+            addErrorMessage "Parameter container-registry (--container-registry) is required"
+        elif [ -z "$(echo "${containerRegistryIdParam}" | grep -E "^[0-9]+$")" ]; then
+            addErrorMessage "Parameter container-registry (--container-registry) must be a number"
+        fi
+        if [ -z "${tagNameParam}" ]; then
+            addErrorMessage "Parameter tag (--tag) is required"
+        fi
+    }
+    if [[ "$HELP" == "true" ]]; then
+        pglab-project-container-registry-get-tag-help
+        return $?
+    fi
+    if [[ "$USAGE" == "true" ]]; then
+        >&2 pglab-usage false false
+        return $?
+    fi
+    check-dependencies-parameters verifyParameters false false
+    exitCode=$?
+    if [ $exitCode -ne 0 ]; then
+        return $exitCode
+    fi
+
+    pglab-project-container-registry-raw-get-tag "$GITLAB_TOKEN" "$PROJECT_PARAM" "$containerRegistryIdParam" "$tagNameParam"
+    return $?
+}
+
+function pglab-project-container-registry-get-tag-help () {
+    echo "$(cat <<EOF
+_COMMAND_ENTRYPOINT_()
+
+NAME
+       _COMMAND_ENTRYPOINT_ -
+
+DESCRIPTION
+       Get project container registry tag detail
+
+SYNOPSIS
+            _COMMAND_ENTRYPOINT_
+          [help]
+          --project <value>
+          --container-registry <value>
+          --tag <value>
+
+HELP COMMAND
+       help
+
+       display this help and exit
+
+OPTIONS
+       --project (string|number)
+          The project to get container registry tags.
+
+          This parameter value is the project ID if it is a number, or if
+          it is not a number this parameter value is the project full path.
+
+       --container-registry
+          The container registry in the project to get its tags.
+
+       --tag
+          The tag in the project to get its details.
+
+EOF
+)" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
+    return $?
+}
+[[ "$PGLAB_IGNORE_SCRIPT_AUTOSTART" != "true" ]] && commandExecAutostart="$(basename "$(readlink -f -- "$0")" | sed -E "s/ /-/g")"
+if [[ "$commandExecAutostart" == "pglab-project-container-registry-get-tag" ]]; then
+    [[ -L "$0" ]] \
+        && SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )") \
+        || SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
+    source "${SCRIPT_DIR}/../common/all"
+    $commandExecAutostart $@
+    exit $?
+fi
