@@ -15,9 +15,12 @@ SYNOPSIS
           [--group <value>]
           [--user <value>]
           [--namespace <value>]
+          [--container-registries]
+          [--container-registries-tags]
+          [--container-registries-detailed-tags]
+          [--recursive]
           [--per-page <value>]
           [--page <value>]
-          [--recursive]
 
 HELP COMMAND
        help
@@ -46,6 +49,16 @@ OPTIONS
 
        --container-registries
           If used, include project container registries
+
+       --container-registries-tags
+          If used, include project container registries with its tags
+
+       --container-registries-detailed-tags
+          If used, include project container registries with its detailed tags
+
+       --recursive
+          If used with --group or --namespace (namespace must be a 
+          group), get group projects and its subgroup projects recursively.
 
 EOF
 )" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less

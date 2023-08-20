@@ -3,8 +3,10 @@ function pglab-project-raw-list-by-user-in-page () {
     local gitlabToken="$1"
     local userParam="$2"
     local getContainerRegistries="$3"
-    local per_page="$4"
-    local page="$5"
+    local getContainerRegistryTags="$4"
+    local getContainerRegistryDetailedTags="$5"
+    local per_page="$6"
+    local page="$7"
     local userPath="$(pglab-get-number-or-url-encoded "$userParam")"
     local requestUrl=""
     local listProjectsPage=""
@@ -18,7 +20,7 @@ function pglab-project-raw-list-by-user-in-page () {
     fi
 
     if [[ "$getContainerRegistries" == "true" ]]; then
-        listProjectsPage="$(pglab-project-fill-container-registries "$listProjectsPage")"
+        listProjectsPage="$(pglab-project-fill-container-registries "$listProjectsPage" "$getContainerRegistryTags" "$getContainerRegistryDetailedTags")"
         exitCode="$?"
         if [ $exitCode -ne 0 ]; then
             return "$exitCode"

@@ -1,25 +1,34 @@
 #!/usr/bin/env bash
 function pglab-project-fill-container-registries () {
     local listProjectsPage="$1"
+    local getTags="$2"
+    local getDetailedTags="$3"
+    local termParamTags=""
+    local termParamDetailedTags=""
+    [[ "$getTags" == "true" ]] && termParamTags="--tags"
+    [[ "$getDetailedTags" == "true" ]] && termParamDetailedTags="--detailed-tags"
     if [ "$(echo "$listProjectsPage" | jq length)" -gt 0 ]; then
         listProjectsPageWithContainerRegistries="[]"
         while IFS=$'\t' read -r projectIndex; do
             projectItem=$(echo "$listProjectsPage" | jq ".[${projectIndex}]")
             projectIdItem="$(echo "$projectItem" | jq .id)"
 
-            containersRepositories=$(pglab --restart-entrypoint project container-registry list --project "$projectIdItem" --detailed-tags)
+            containersRepositories=$(pglab --restart-entrypoint project container-registry list --project "$projectIdItem" $termParamTags $termParamDetailedTags)
             exitCode="$?"
             if [ $exitCode -ne 0 ]; then
                 return "$exitCode"
             fi
-            projectContainerImagesTotalSize=0
-            if [ "$(echo "$containersRepositories" | jq length)" -gt 0 ]; then
-                while IFS=$'\t' read -r containerRegistryTotalSize; do
-                    projectContainerImagesTotalSize=$(($projectContainerImagesTotalSize + $containerRegistryTotalSize))
-                done <<< "$(echo "$containersRepositories" | jq -r ".|map([.total_size|tostring])|.[]|@tsv")"
-            fi
+
             projectItem=$( (echo "$projectItem" ; echo "$containersRepositories") | jq ". + { containersRepositories: input }")
-            projectItem=$(echo "$projectItem" | jq ".total_size = ${projectContainerImagesTotalSize} | .total_size_formatted = \"$(pglab-format-qtd-bytes "$projectContainerImagesTotalSize" GB)\"")
+            if [[ "$getDetailedTags" == "true" ]]; then
+                projectContainerImagesTotalSize=0
+                if [ "$(echo "$containersRepositories" | jq length)" -gt 0 ]; then
+                    while IFS=$'\t' read -r containerRegistryTotalSize; do
+                        projectContainerImagesTotalSize=$(($projectContainerImagesTotalSize + $containerRegistryTotalSize))
+                    done <<< "$(echo "$containersRepositories" | jq -r ".|map([.total_size|tostring])|.[]|@tsv")"
+                fi
+                projectItem=$(echo "$projectItem" | jq ".total_size = ${projectContainerImagesTotalSize} | .total_size_formatted = \"$(pglab-format-qtd-bytes "$projectContainerImagesTotalSize" GB)\"")
+            fi
             listProjectsPageWithContainerRegistries=$(pglab-json-array-join "$listProjectsPageWithContainerRegistries" "[$projectItem]")
         done <<< "$(echo "$listProjectsPage" | jq -r ".|keys|map([.|tostring])|.[]|@tsv")"
         echo "$listProjectsPageWithContainerRegistries" | jq .
