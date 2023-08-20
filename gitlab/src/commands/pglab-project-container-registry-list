@@ -54,6 +54,10 @@ function pglab-project-container-registry-raw-list-in-page () {
 
     if [[ "$includeDetailedTags" == "true" ]]; then
         listProjectContainerRegistriesPage="$(pglab-project-container-registry-fill-detailed-tags "$listProjectContainerRegistriesPage")"
+        exitCode="$?"
+        if [ $exitCode -ne 0 ]; then
+            return "$exitCode"
+        fi
     fi
 
     echo "$listProjectContainerRegistriesPage" | jq .

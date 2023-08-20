@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+function pglab-project-fill-container-registries () {
+    local listProjectsPage="$1"
+    if [ "$(echo "$listProjectsPage" | jq length)" -gt 0 ]; then
+        listProjectsPageWithContainerRegistries="[]"
+        while IFS=$'\t' read -r projectIndex; do
+            projectItem=$(echo "$listProjectsPage" | jq ".[${projectIndex}]")
+            projectIdItem="$(echo "$projectItem" | jq .id)"
+
+            containersRepositories=$(pglab --restart-entrypoint project container-registry list --project "$projectIdItem" --detailed-tags)
+            exitCode="$?"
+            if [ $exitCode -ne 0 ]; then
+                return "$exitCode"
+            fi
+            projectItem=$( (echo "$projectItem" ; echo "$containersRepositories") | jq ". + { containersRepositories: input }")
+            listProjectsPageWithContainerRegistries=$(pglab-json-array-join "$listProjectsPageWithContainerRegistries" "[$projectItem]")
+        done <<< "$(echo "$listProjectsPage" | jq -r ".|keys|map([.|tostring])|.[]|@tsv")"
+        echo "$listProjectsPageWithContainerRegistries" | jq .
+        return $?
+    fi
+    echo "$listProjectsPage"
+    return $?
+}

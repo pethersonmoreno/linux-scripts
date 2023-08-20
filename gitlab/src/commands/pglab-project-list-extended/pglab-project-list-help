@@ -44,6 +44,9 @@ OPTIONS
           it is a number, or if it is not a number this parameter value
           is the namespace (group or project) full path.
 
+       --container-registries
+          If used, include project container registries
+
 EOF
 )" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
     return $?

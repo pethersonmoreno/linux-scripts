@@ -16,6 +16,7 @@ function pglab-project-list () {
     local NAMESPACE_PARAM=""
     local isRecursive=false
     local HELP=""
+    local getContainerRegistries=""
     if [[ "$1" == "help" ]]; then
         HELP="true"
     else
@@ -27,11 +28,12 @@ function pglab-project-list () {
                 --user) USER_PARAM="$2"; shift 2 ;;
                 --namespace=*) NAMESPACE_PARAM="${1#*=}"; shift 1 ;;
                 --namespace) NAMESPACE_PARAM="$2"; shift 2 ;;
+                --container-registries) getContainerRegistries=true; shift 1 ;;
+                --recursive) isRecursive=true; shift 1 ;;
                 --per-page=*) PER_PAGE="${1#*=}"; shift 1 ;;
                 --per-page) PER_PAGE="$2"; shift 2 ;;
                 --page=*) PAGE="${1#*=}"; shift 1 ;;
                 --page) PAGE="$2"; shift 2 ;;
-                --recursive) isRecursive=true; shift 1 ;;
                 --) addErrorMessage "Invalid option '$1'"; shift ;;
                 -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
                 * )
@@ -87,20 +89,20 @@ function pglab-project-list () {
         fi
         if [ ! -z "$PAGE" ]; then
             if [[ "$isGroup" == "true" ]]; then
-                pglab-project-raw-list-by-group-in-page "$GITLAB_TOKEN" "$groupParamToUse" "$PER_PAGE" "$PAGE"
+                pglab-project-raw-list-by-group-in-page "$GITLAB_TOKEN" "$groupParamToUse" "$getContainerRegistries" "$PER_PAGE" "$PAGE"
             else
-                pglab-project-raw-list-by-user-in-page "$GITLAB_TOKEN" "$userParamToUse" "$PER_PAGE" "$PAGE"
+                pglab-project-raw-list-by-user-in-page "$GITLAB_TOKEN" "$userParamToUse" "$getContainerRegistries" "$PER_PAGE" "$PAGE"
             fi
             return $?
         fi
         if [[ "$isGroup" == "true" ]]; then
             if [[ "$isRecursive" == "true" ]]; then
-                pglab-project-raw-list-by-group-recursive "$GITLAB_TOKEN" "$groupParamToUse" "$PER_PAGE"
+                pglab-project-raw-list-by-group-recursive "$GITLAB_TOKEN" "$groupParamToUse" "$getContainerRegistries" "$PER_PAGE"
             else
-                pglab-project-raw-list-by-group "$GITLAB_TOKEN" "$groupParamToUse" "$PER_PAGE"
+                pglab-project-raw-list-by-group "$GITLAB_TOKEN" "$groupParamToUse" "$getContainerRegistries" "$PER_PAGE"
             fi
         else
-            pglab-project-raw-list-by-user "$GITLAB_TOKEN" "$userParamToUse" "$PER_PAGE"
+            pglab-project-raw-list-by-user "$GITLAB_TOKEN" "$userParamToUse" "$getContainerRegistries" "$PER_PAGE"
         fi
         return $?
     fi
