@@ -21,4 +21,5 @@ function pglab-project-raw-list-by-user () {
     done
 
     echo "$listProjects" | jq .
+    return $?
 }

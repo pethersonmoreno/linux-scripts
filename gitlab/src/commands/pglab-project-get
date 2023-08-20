@@ -14,6 +14,7 @@ function pglab-project-raw-get () {
     fi
 
     echo "$PROJECT_JSON" | jq .
+    return $?
 }
 function pglab-project-get () {
     local HELP=""
@@ -23,7 +24,7 @@ function pglab-project-get () {
         while true; do
             case "$1" in
                 --project=*) PROJECT_PARAM="${1#*=}"; shift 1 ;;
-                --project) PROJECT_PARAM="$2";  shift 2 ;;
+                --project) PROJECT_PARAM="$2"; shift 2 ;;
                 --) addErrorMessage "Invalid option '$1'"; shift ;;
                 -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
                 * )

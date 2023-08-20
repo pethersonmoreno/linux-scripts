@@ -19,6 +19,7 @@ function pglab-group-raw-list-subgroups-in-page () {
     fi
 
     echo "$listSubgroupsPage" | jq .
+    return $?
 }
 function pglab-group-raw-list-subgroups () {
     local gitlabToken="$1"
@@ -41,6 +42,7 @@ function pglab-group-raw-list-subgroups () {
     done
 
     echo "$listSubgroups" | jq .
+    return $?
 }
 
 function pglab-group-list-subgroups () {
@@ -53,11 +55,11 @@ function pglab-group-list-subgroups () {
         while true; do
             case "$1" in
                 --parent-group=*) PARENT_GROUP_PARAM="${1#*=}"; shift 1 ;;
-                --parent-group) PARENT_GROUP_PARAM="$2";  shift 2 ;;
+                --parent-group) PARENT_GROUP_PARAM="$2"; shift 2 ;;
                 --per-page=*) PER_PAGE="${1#*=}"; shift 1 ;;
-                --per-page) PER_PAGE="$2";  shift 2 ;;
+                --per-page) PER_PAGE="$2"; shift 2 ;;
                 --page=*) PAGE="${1#*=}"; shift 1 ;;
-                --page) PAGE="$2";  shift 2 ;;
+                --page) PAGE="$2"; shift 2 ;;
                 --) addErrorMessage "Invalid option '$1'"; shift ;;
                 -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
                 * )

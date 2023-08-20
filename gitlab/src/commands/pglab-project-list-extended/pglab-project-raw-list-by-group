@@ -24,4 +24,5 @@ function pglab-project-raw-list-by-group () {
     done
 
     echo "$listProjects" | jq .
+    return $?
 }

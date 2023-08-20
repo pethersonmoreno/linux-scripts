@@ -2,13 +2,15 @@
 function pglab-project-container-registry-raw-list-in-page () {
     local gitlabToken="$1"
     local projectParam="$2"
-    local per_page="$3"
-    local page="$4"
+    local includeTags="$3"
+    local per_page="$4"
+    local page="$5"
     local projectPath="$(pglab-get-number-or-url-encoded "$projectParam")"
     local requestUrl=""
     local listProjectContainerRegistriesPage=""
     local exitCode=""
     requestUrl="https://gitlab.com/api/v4/projects/${projectPath}/registry/repositories?per_page=$per_page&page=$page"
+    [[ "$includeTags" == "true" ]] && requestUrl="${requestUrl}&tags=true"
     listProjectContainerRegistriesPage=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
     exitCode="$?"
     if [ $exitCode -ne 0 ]; then
@@ -17,18 +19,20 @@ function pglab-project-container-registry-raw-list-in-page () {
     fi
 
     echo "$listProjectContainerRegistriesPage" | jq .
+    return $?
 }
 function pglab-project-container-registry-raw-list () {
     local gitlabToken="$1"
     local projectParam="$2"
-    local per_page="$3"
+    local includeTags="$3"
+    local per_page="$4"
     local listProjectContainerRegistries="[]"
     local page=0
     local page_empty=false
     local listProjectContainerRegistriesPage=""
     while [ $page_empty != true ]; do
         page=$(($page+1))
-        listProjectContainerRegistriesPage=$(pglab-project-container-registry-raw-list-in-page "$gitlabToken" "$projectParam" "$per_page" "$page")
+        listProjectContainerRegistriesPage=$(pglab-project-container-registry-raw-list-in-page "$gitlabToken" "$projectParam" "$includeTags" "$per_page" "$page")
         exitCode=$?
         if [ $exitCode -ne 0 ]; then
             return $exitCode
@@ -38,6 +42,7 @@ function pglab-project-container-registry-raw-list () {
     done
 
     echo "$listProjectContainerRegistries" | jq .
+    return $?
 }
 
 function pglab-project-container-registry-list () {
@@ -45,17 +50,19 @@ function pglab-project-container-registry-list () {
     local PAGE=""
     local HELP=""
     local PROJECT_PARAM=""
+    local includeTags=""
     if [[ "$1" == "help" ]]; then
         HELP="true"
     else
         while true; do
             case "$1" in
                 --project=*) PROJECT_PARAM="${1#*=}"; shift 1 ;;
-                --project) PROJECT_PARAM="$2";  shift 2 ;;
+                --project) PROJECT_PARAM="$2"; shift 2 ;;
+                --tags) includeTags=true; shift 1 ;;
                 --per-page=*) PER_PAGE="${1#*=}"; shift 1 ;;
-                --per-page) PER_PAGE="$2";  shift 2 ;;
+                --per-page) PER_PAGE="$2"; shift 2 ;;
                 --page=*) PAGE="${1#*=}"; shift 1 ;;
-                --page) PAGE="$2";  shift 2 ;;
+                --page) PAGE="$2"; shift 2 ;;
                 --) addErrorMessage "Invalid option '$1'"; shift ;;
                 -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
                 * )
@@ -86,10 +93,10 @@ function pglab-project-container-registry-list () {
     fi
 
     if [ ! -z "$PAGE" ]; then
-        pglab-project-container-registry-raw-list-in-page "$GITLAB_TOKEN" "$PROJECT_PARAM" "$PER_PAGE" "$PAGE"
+        pglab-project-container-registry-raw-list-in-page "$GITLAB_TOKEN" "$PROJECT_PARAM" "$includeTags" "$PER_PAGE" "$PAGE"
         return $?
     fi
-    pglab-project-container-registry-raw-list "$GITLAB_TOKEN" "$PROJECT_PARAM" "$PER_PAGE"
+    pglab-project-container-registry-raw-list "$GITLAB_TOKEN" "$PROJECT_PARAM" "$includeTags" "$PER_PAGE"
     return $?
 }
 
@@ -119,6 +126,9 @@ OPTIONS
 
           This parameter value is the project ID if it is a number, or if
           it is not a number this parameter value is the project full path.
+
+       --tags
+          If used, include container registry tags
 
 EOF
 )" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less

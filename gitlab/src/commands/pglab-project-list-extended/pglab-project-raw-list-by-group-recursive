@@ -35,4 +35,5 @@ function pglab-project-raw-list-by-group-recursive () {
         fi
     done
     echo "$listProjects" | jq .
+    return $?
 }

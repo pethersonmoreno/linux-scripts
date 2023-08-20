@@ -19,4 +19,5 @@ function pglab-project-raw-list-by-group-in-page () {
     fi
 
     echo "$listProjectsPage" | jq .
+    return $?
 }
