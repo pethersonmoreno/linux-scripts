@@ -1,21 +1,59 @@
 #!/usr/bin/env bash
+function pglab-project-container-registry-fill-detailed-tags () {
+    local listProjectContainerRegistriesPage="$1"
+    if [ "$(echo "$listProjectContainerRegistriesPage" | jq length)" -gt 0 ]; then
+        listProjectContainerRegistriesPageWithTagsDetailed="[]"
+        while IFS=$'\t' read -r itemContainerRegistryIndex; do
+            itemContainerRegistry=$(echo "$listProjectContainerRegistriesPage" | jq ".[${itemContainerRegistryIndex}]")
+            projectId="$(echo "$itemContainerRegistry" | jq .project_id)"
+            containerRegistryId="$(echo "$itemContainerRegistry" | jq .id)"
+            ITEM_CONTAINER_REGISTRY_TAGS="$(echo "$itemContainerRegistry" | jq .tags)"
+            containerRegistryTags="[]"
+            if [[ $(echo "$ITEM_CONTAINER_REGISTRY_TAGS" | jq -r '.|length') -gt 0 ]]; then
+                while IFS=$'\t' read -r containerRegistryTagIndex; do
+                    containerRegistryTag=$(echo "$ITEM_CONTAINER_REGISTRY_TAGS" | jq ".[${containerRegistryTagIndex}]")
+                    tagName="$(echo "$containerRegistryTag" | jq -r .name)"
+                    tagDetail=$(pglab --restart-entrypoint project container-registry get-tag --project "$projectId" --container-registry "$containerRegistryId" --tag "$tagName")
+                    exitCode="$?"
+                    if [ $exitCode -ne 0 ]; then
+                        return "$exitCode"
+                    fi
+                    containerRegistryTags=$(pglab-json-array-join "$containerRegistryTags" "[$tagDetail]")
+                done <<< "$(echo "$ITEM_CONTAINER_REGISTRY_TAGS" | jq -r '.|keys|map([.|tostring])|.[]|@tsv')"
+            fi
+            itemContainerRegistry=$( (echo "$itemContainerRegistry" ; echo "$containerRegistryTags") | jq ". + { tags: input }")
+            listProjectContainerRegistriesPageWithTagsDetailed=$( (echo "$listProjectContainerRegistriesPageWithTagsDetailed" ; echo "$itemContainerRegistry") | jq '. + [input]')
+        done <<< "$(echo "$listProjectContainerRegistriesPage" | jq -r ".|keys|map([.|tostring])|.[]|@tsv")"
+        echo "$listProjectContainerRegistriesPageWithTagsDetailed" | jq .
+        return $?
+    fi
+    echo "$listProjectContainerRegistriesPage"
+    return $?
+}
 function pglab-project-container-registry-raw-list-in-page () {
     local gitlabToken="$1"
     local projectParam="$2"
     local includeTags="$3"
-    local per_page="$4"
-    local page="$5"
+    local includeDetailedTags="$4"
+    local per_page="$5"
+    local page="$6"
     local projectPath="$(pglab-get-number-or-url-encoded "$projectParam")"
     local requestUrl=""
     local listProjectContainerRegistriesPage=""
     local exitCode=""
     requestUrl="https://gitlab.com/api/v4/projects/${projectPath}/registry/repositories?per_page=$per_page&page=$page"
-    [[ "$includeTags" == "true" ]] && requestUrl="${requestUrl}&tags=true"
+    if [[ "$includeTags" == "true" ]] || [[ "$includeDetailedTags" == "true" ]]; then
+        requestUrl="${requestUrl}&tags=true"
+    fi
     listProjectContainerRegistriesPage=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
     exitCode="$?"
     if [ $exitCode -ne 0 ]; then
         >&2 echo -e "Error: failed request to get container registries in a project"
         return "$exitCode"
+    fi
+
+    if [[ "$includeDetailedTags" == "true" ]]; then
+        listProjectContainerRegistriesPage="$(pglab-project-container-registry-fill-detailed-tags "$listProjectContainerRegistriesPage")"
     fi
 
     echo "$listProjectContainerRegistriesPage" | jq .
@@ -25,14 +63,15 @@ function pglab-project-container-registry-raw-list () {
     local gitlabToken="$1"
     local projectParam="$2"
     local includeTags="$3"
-    local per_page="$4"
+    local includeDetailedTags="$4"
+    local per_page="$5"
     local listProjectContainerRegistries="[]"
     local page=0
     local page_empty=false
     local listProjectContainerRegistriesPage=""
     while [ $page_empty != true ]; do
         page=$(($page+1))
-        listProjectContainerRegistriesPage=$(pglab-project-container-registry-raw-list-in-page "$gitlabToken" "$projectParam" "$includeTags" "$per_page" "$page")
+        listProjectContainerRegistriesPage=$(pglab-project-container-registry-raw-list-in-page "$gitlabToken" "$projectParam" "$includeTags" "$includeDetailedTags" "$per_page" "$page")
         exitCode=$?
         if [ $exitCode -ne 0 ]; then
             return $exitCode
@@ -51,6 +90,7 @@ function pglab-project-container-registry-list () {
     local HELP=""
     local PROJECT_PARAM=""
     local includeTags=""
+    local includeDetailedTags=""
     if [[ "$1" == "help" ]]; then
         HELP="true"
     else
@@ -59,6 +99,7 @@ function pglab-project-container-registry-list () {
                 --project=*) PROJECT_PARAM="${1#*=}"; shift 1 ;;
                 --project) PROJECT_PARAM="$2"; shift 2 ;;
                 --tags) includeTags=true; shift 1 ;;
+                --detailed-tags) includeDetailedTags=true; shift 1 ;;
                 --per-page=*) PER_PAGE="${1#*=}"; shift 1 ;;
                 --per-page) PER_PAGE="$2"; shift 2 ;;
                 --page=*) PAGE="${1#*=}"; shift 1 ;;
@@ -93,10 +134,10 @@ function pglab-project-container-registry-list () {
     fi
 
     if [ ! -z "$PAGE" ]; then
-        pglab-project-container-registry-raw-list-in-page "$GITLAB_TOKEN" "$PROJECT_PARAM" "$includeTags" "$PER_PAGE" "$PAGE"
+        pglab-project-container-registry-raw-list-in-page "$GITLAB_TOKEN" "$PROJECT_PARAM" "$includeTags" "$includeDetailedTags" "$PER_PAGE" "$PAGE"
         return $?
     fi
-    pglab-project-container-registry-raw-list "$GITLAB_TOKEN" "$PROJECT_PARAM" "$includeTags" "$PER_PAGE"
+    pglab-project-container-registry-raw-list "$GITLAB_TOKEN" "$PROJECT_PARAM" "$includeTags" "$includeDetailedTags" "$PER_PAGE"
     return $?
 }
 
@@ -129,6 +170,9 @@ OPTIONS
 
        --tags
           If used, include container registry tags
+
+       --detailed-tags
+          If used, include container registry tags with its details
 
 EOF
 )" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
