@@ -19,11 +19,9 @@ function pglab-project-container-registry-raw-list-tags-in-page () {
     if [[ "$getDetailed" == "true" ]] && [ "$(echo "$listProjectContainerRegistryTagsPage" | jq length)" -gt 0 ]; then
         listProjectContainerRegistryTagsDetailedPage="[]"
         while IFS=$'\t' read -r tagName; do
-            requestDetailUrl="https://gitlab.com/api/v4/projects/${projectPath}/registry/repositories/${containerRegistryIdParam}/tags/${tagName}"
-            tagDetail=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestDetailUrl}")
+            tagDetail=$(pglab --restart-entrypoint project container-registry get-tag --project "$projectPath" --container-registry "$containerRegistryIdParam" --tag "$tagName")
             exitCode="$?"
             if [ $exitCode -ne 0 ]; then
-                >&2 echo -e "Error: failed request to get tag detail in a container repository of a project"
                 return "$exitCode"
             fi
             listProjectContainerRegistryTagsDetailedPage=$(pglab-json-array-join "$listProjectContainerRegistryTagsDetailedPage" "[$tagDetail]")
