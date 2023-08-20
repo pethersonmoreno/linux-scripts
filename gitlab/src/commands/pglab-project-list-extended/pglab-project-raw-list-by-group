@@ -11,8 +11,9 @@ function pglab-project-raw-list-by-group () {
     while [ $page_empty != true ]; do
         page=$(($page+1))
         listProjectsPage=$(pglab-project-raw-list-by-group-in-page "$gitlabToken" "$groupParam" "$per_page" "$page")
-        if [ $? -ne 0 ]; then
-            return $?
+        exitCode=$?
+        if [ $exitCode -ne 0 ]; then
+            return $exitCode
         fi
         listProjects=$(pglab-json-array-join "$listProjects" "$listProjectsPage")
         page_empty=$(pglab-json-array-is-empty "$listProjectsPage")

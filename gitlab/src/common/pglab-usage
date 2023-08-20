@@ -22,8 +22,9 @@ HEREDOC
 function pglab-usage() {
   echo
   pglab-raw-usage $@
-  if [ $? -ne 0 ]; then
-    return $?
+  exitCode=$?
+  if [ $exitCode -ne 0 ]; then
+    return $exitCode
   fi
   echo
 }

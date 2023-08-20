@@ -22,7 +22,7 @@ function pglab-project () {
         return $?
     fi
     if [[ "$USAGE" == "true" ]]; then
-        pglab-usage true false
+        >&2 pglab-usage true false
         return $?
     fi
     if [[ "$command" != "" ]]; then
@@ -30,18 +30,21 @@ function pglab-project () {
         return $?
     fi
     check-dependencies-parameters true false
-    if [ $? -ne 0 ]; then
-        return $?
+    exitCode=$?
+    if [ $exitCode -ne 0 ]; then
+        return $exitCode
     fi
 
-    echo
-    pglab-raw-usage true false
-    if [ $? -ne 0 ]; then
-        return $?
+    >&2 echo
+    usageContent=$(pglab-raw-usage true false)
+    exitCode=$?
+    >&2 echo "$usageContent"
+    if [ $exitCode -ne 0 ]; then
+        return $exitCode
     fi
-    echo 
-    echo "$commandEntrypoint: error: the following arguments are required: subcommand"
-    echo
+    >&2 echo 
+    >&2 echo "$commandEntrypoint: error: the following arguments are required: subcommand"
+    >&2 echo
 }
 
 function pglab-project-help () {

@@ -66,12 +66,13 @@ function pglab-project-list () {
         return $?
     fi
     if [[ "$USAGE" == "true" ]]; then
-        pglab-usage false false
+        >&2 pglab-usage false false
         return $?
     fi
     check-dependencies-parameters verifyParameters false false
-    if [ $? -ne 0 ]; then
-        return $?
+    exitCode=$?
+    if [ $exitCode -ne 0 ]; then
+        return $exitCode
     fi
 
     if [ ! -z "$GROUP_PARAM" ] || [ ! -z "$USER_PARAM" ] || [ ! -z "$NAMESPACE_PARAM" ]; then

@@ -29,7 +29,7 @@ function pglab () {
         return $?
     fi
     if [[ "$USAGE" == "true" ]]; then
-        pglab-usage true true
+        >&2 pglab-usage true true
         return $?
     fi
 
@@ -38,15 +38,16 @@ function pglab () {
         return $?
     fi
     check-dependencies-parameters "" true true
-    if [ $? -ne 0 ]; then
-        return $?
+    exitCode=$?
+    if [ $exitCode -ne 0 ]; then
+        return $exitCode
     fi
 
-    echo
-    pglab-raw-usage true true
-    echo 
-    echo "$commandEntrypoint: error: the following arguments are required: command"
-    echo
+    >&2 echo
+    pglab-raw-usage true true | >&2 cat
+    >&2 echo 
+    >&2 echo "$commandEntrypoint: error: the following arguments are required: command"
+    >&2 echo
 }
 
 function pglab-help () {

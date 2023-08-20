@@ -16,15 +16,17 @@ function pglab-project-raw-list-by-group-recursive () {
         pendingGroups=$(echo "$pendingGroups" | sed -E "s/^[^ ]+ ?//")
 
         groupItemProjects=$(pglab-project-raw-list-by-group "$gitlabToken" "$groupItem" "$per_page")
-        if [ $? -ne 0 ]; then
-            return $?
+        exitCode=$?
+        if [ $exitCode -ne 0 ]; then
+            return $exitCode
         fi
         listProjects=$(pglab-json-array-join "$listProjects" "$groupItemProjects")
 
         # Get subgroups of the current group, it will be used to get projects in this group
         groupSubgroups=$(pglab --restart-entrypoint group list-subgroups --parent-group "$groupItem")
-        if [ $? -ne 0 ]; then
-            return $?
+        exitCode=$?
+        if [ $exitCode -ne 0 ]; then
+            return $exitCode
         fi
         # If found at least one subgroup, add it to pending groups to get projects
         groupSubgroupsFullPaths=$(echo "$groupSubgroups" | jq -r "[.[].full_path]|join(\" \")")
