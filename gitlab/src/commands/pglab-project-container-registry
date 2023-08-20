@@ -11,7 +11,7 @@ function pglab-project-container-registry () {
                 -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
                 * )
                     [ -z ${1+x} ] && break
-                    addErrorMessage "Invalid command choice '$1', valid choices are: list"
+                    addErrorMessage "Invalid command choice '$1', valid choices are: list, list-tags"
                     break
                 ;;
             esac

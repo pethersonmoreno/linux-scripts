@@ -1,0 +1,174 @@
+#!/usr/bin/env bash
+function pglab-project-container-registry-raw-list-tags-in-page () {
+    local gitlabToken="$1"
+    local projectParam="$2"
+    local containerRegistryIdParam="$3"
+    local getDetailed="$4"
+    local per_page="$5"
+    local page="$6"
+    local projectPath="$(pglab-get-number-or-url-encoded "$projectParam")"
+    local requestUrl=""
+    local listProjectContainerRegistryTagsPage=""
+    local exitCode=""
+    requestUrl="https://gitlab.com/api/v4/projects/${projectPath}/registry/repositories/${containerRegistryIdParam}/tags?per_page=$per_page&page=$page"
+    listProjectContainerRegistryTagsPage=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
+    exitCode="$?"
+    if [ $exitCode -ne 0 ]; then
+        return "$exitCode"
+    fi
+    if [[ "$getDetailed" == "true" ]] && [ "$(echo "$listProjectContainerRegistryTagsPage" | jq length)" -gt 0 ]; then
+        listProjectContainerRegistryTagsDetailedPage="[]"
+        while IFS=$'\t' read -r tagName; do
+            requestDetailUrl="https://gitlab.com/api/v4/projects/${projectPath}/registry/repositories/${containerRegistryIdParam}/tags/${tagName}"
+            tagDetail=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestDetailUrl}")
+            exitCode="$?"
+            if [ $exitCode -ne 0 ]; then
+                >&2 echo -e "Error: failed request to get tag detail in a container repository of a project"
+                return "$exitCode"
+            fi
+            listProjectContainerRegistryTagsDetailedPage=$(pglab-json-array-join "$listProjectContainerRegistryTagsDetailedPage" "[$tagDetail]")
+        done <<< "$(echo "$listProjectContainerRegistryTagsPage" | jq -r "map([.name])|.[]|@tsv")"
+        echo "$listProjectContainerRegistryTagsDetailedPage" | jq .
+        return $?
+    fi
+    echo "$listProjectContainerRegistryTagsPage" | jq .
+    return $?
+}
+function pglab-project-container-registry-raw-list-tags () {
+    local gitlabToken="$1"
+    local projectParam="$2"
+    local containerRegistryIdParam="$3"
+    local getDetailed="$4"
+    local per_page="$5"
+    local listProjectContainerRegistryTags="[]"
+    local page=0
+    local page_empty=false
+    local itemListProjectContainerRegistryTagsPage=""
+    while [ $page_empty != true ]; do
+        page=$(($page+1))
+        itemListProjectContainerRegistryTagsPage=$(pglab-project-container-registry-raw-list-tags-in-page "$gitlabToken" "$projectParam" "$containerRegistryIdParam" "$getDetailed" "$per_page" "$page")
+        exitCode=$?
+        if [ $exitCode -ne 0 ]; then
+            return $exitCode
+        fi
+        listProjectContainerRegistryTags=$(pglab-json-array-join "$listProjectContainerRegistryTags" "$itemListProjectContainerRegistryTagsPage")
+        exitCode=$?
+        if [ $exitCode -ne 0 ]; then
+            return "$exitCode"
+        fi
+        page_empty=$(pglab-json-array-is-empty "$itemListProjectContainerRegistryTagsPage")
+    done
+    echo "$listProjectContainerRegistryTags" | jq .
+    return $?
+}
+
+function pglab-project-container-registry-list-tags () {
+    local PER_PAGE=1000
+    local PAGE=""
+    local HELP=""
+    local PROJECT_PARAM=""
+    local containerRegistryIdParam=""
+    local getDetailed=""
+    if [[ "$1" == "help" ]]; then
+        HELP="true"
+    else
+        while true; do
+            case "$1" in
+                --project=*) PROJECT_PARAM="${1#*=}"; shift 1 ;;
+                --project) PROJECT_PARAM="$2"; shift 2 ;;
+                --container-registry=*) containerRegistryIdParam="${1#*=}"; shift 1 ;;
+                --container-registry) containerRegistryIdParam="$2"; shift 2 ;;
+                --detailed) getDetailed="true"; shift 1 ;;
+                --per-page=*) PER_PAGE="${1#*=}"; shift 1 ;;
+                --per-page) PER_PAGE="$2"; shift 2 ;;
+                --page=*) PAGE="${1#*=}"; shift 1 ;;
+                --page) PAGE="$2"; shift 2 ;;
+                --) addErrorMessage "Invalid option '$1'"; shift ;;
+                -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
+                * )
+                    [ -z ${1+x} ] && break
+                    addErrorMessage "Invalid parameter with value '$1'"
+                    shift 1
+                ;;
+            esac
+        done
+    fi
+    function verifyParameters () {
+        if [ -z "${PROJECT_PARAM}" ]; then
+            addErrorMessage "Parameter project (--project) is required"
+        fi
+        if [ -z "${containerRegistryIdParam}" ]; then
+            addErrorMessage "Parameter container-registry (--container-registry) is required"
+        elif [ -z "$(echo "${containerRegistryIdParam}" | grep -E "^[0-9]+$")" ]; then
+            addErrorMessage "Parameter container-registry (--container-registry) must be a number"
+        fi        
+    }
+    if [[ "$HELP" == "true" ]]; then
+        pglab-project-container-registry-list-tags-help
+        return $?
+    fi
+    if [[ "$USAGE" == "true" ]]; then
+        >&2 pglab-usage false false
+        return $?
+    fi
+    check-dependencies-parameters verifyParameters false false
+    exitCode=$?
+    if [ $exitCode -ne 0 ]; then
+        return $exitCode
+    fi
+
+    if [ ! -z "$PAGE" ]; then
+        pglab-project-container-registry-raw-list-tags-in-page "$GITLAB_TOKEN" "$PROJECT_PARAM" "$containerRegistryIdParam" "$getDetailed" "$PER_PAGE" "$PAGE"
+        return $?
+    fi
+    pglab-project-container-registry-raw-list-tags "$GITLAB_TOKEN" "$PROJECT_PARAM" "$containerRegistryIdParam" "$getDetailed" "$PER_PAGE"
+    return $?
+}
+
+function pglab-project-container-registry-list-tags-help () {
+    echo "$(cat <<EOF
+_COMMAND_ENTRYPOINT_()
+
+NAME
+       _COMMAND_ENTRYPOINT_ -
+
+DESCRIPTION
+       Get a list of tags in a container repository of a project
+
+SYNOPSIS
+            _COMMAND_ENTRYPOINT_
+          [help]
+          --project <value>
+          --container-registry <value>
+
+HELP COMMAND
+       help
+
+       display this help and exit
+
+OPTIONS
+       --project (string|number)
+          The project to get container registry tags.
+
+          This parameter value is the project ID if it is a number, or if
+          it is not a number this parameter value is the project full path.
+
+       --container-registry
+          The container registry in the project to get its tags.
+
+       --detailed
+          If used, include tag details
+
+EOF
+)" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
+    return $?
+}
+[[ "$PGLAB_IGNORE_SCRIPT_AUTOSTART" != "true" ]] && commandExecAutostart="$(basename "$(readlink -f -- "$0")" | sed -E "s/ /-/g")"
+if [[ "$commandExecAutostart" == "pglab-project-container-registry-list-tags" ]]; then
+    [[ -L "$0" ]] \
+        && SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )") \
+        || SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
+    source "${SCRIPT_DIR}/../common/all"
+    $commandExecAutostart $@
+    exit $?
+fi
