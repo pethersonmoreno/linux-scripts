@@ -12,7 +12,14 @@ function pglab-project-fill-container-registries () {
             if [ $exitCode -ne 0 ]; then
                 return "$exitCode"
             fi
+            projectContainerImagesTotalSize=0
+            if [ "$(echo "$containersRepositories" | jq length)" -gt 0 ]; then
+                while IFS=$'\t' read -r containerRegistryTotalSize; do
+                    projectContainerImagesTotalSize=$(($projectContainerImagesTotalSize + $containerRegistryTotalSize))
+                done <<< "$(echo "$containersRepositories" | jq -r ".|map([.total_size|tostring])|.[]|@tsv")"
+            fi
             projectItem=$( (echo "$projectItem" ; echo "$containersRepositories") | jq ". + { containersRepositories: input }")
+            projectItem=$(echo "$projectItem" | jq ".total_size = ${projectContainerImagesTotalSize} | .total_size_formatted = \"$(pglab-format-qtd-bytes "$projectContainerImagesTotalSize" GB)\"")
             listProjectsPageWithContainerRegistries=$(pglab-json-array-join "$listProjectsPageWithContainerRegistries" "[$projectItem]")
         done <<< "$(echo "$listProjectsPage" | jq -r ".|keys|map([.|tostring])|.[]|@tsv")"
         echo "$listProjectsPageWithContainerRegistries" | jq .

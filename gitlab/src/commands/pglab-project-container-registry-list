@@ -9,6 +9,7 @@ function pglab-project-container-registry-fill-detailed-tags () {
             containerRegistryId="$(echo "$itemContainerRegistry" | jq .id)"
             ITEM_CONTAINER_REGISTRY_TAGS="$(echo "$itemContainerRegistry" | jq .tags)"
             containerRegistryTags="[]"
+            itemContainerRegistryTotalSize=0
             if [[ $(echo "$ITEM_CONTAINER_REGISTRY_TAGS" | jq -r '.|length') -gt 0 ]]; then
                 while IFS=$'\t' read -r containerRegistryTagIndex; do
                     containerRegistryTag=$(echo "$ITEM_CONTAINER_REGISTRY_TAGS" | jq ".[${containerRegistryTagIndex}]")
@@ -18,10 +19,15 @@ function pglab-project-container-registry-fill-detailed-tags () {
                     if [ $exitCode -ne 0 ]; then
                         return "$exitCode"
                     fi
+                    tagTotalSize="$(echo "$tagDetail" | jq -r .total_size)"
+
+                    itemContainerRegistryTotalSize=$(($itemContainerRegistryTotalSize + $tagTotalSize))
+
                     containerRegistryTags=$(pglab-json-array-join "$containerRegistryTags" "[$tagDetail]")
                 done <<< "$(echo "$ITEM_CONTAINER_REGISTRY_TAGS" | jq -r '.|keys|map([.|tostring])|.[]|@tsv')"
             fi
             itemContainerRegistry=$( (echo "$itemContainerRegistry" ; echo "$containerRegistryTags") | jq ". + { tags: input }")
+            itemContainerRegistry=$(echo "$itemContainerRegistry" | jq ".total_size = ${itemContainerRegistryTotalSize} | .total_size_formatted = \"$(pglab-format-qtd-bytes "$itemContainerRegistryTotalSize" GB)\"")
             listProjectContainerRegistriesPageWithTagsDetailed=$( (echo "$listProjectContainerRegistriesPageWithTagsDetailed" ; echo "$itemContainerRegistry") | jq '. + [input]')
         done <<< "$(echo "$listProjectContainerRegistriesPage" | jq -r ".|keys|map([.|tostring])|.[]|@tsv")"
         echo "$listProjectContainerRegistriesPageWithTagsDetailed" | jq .
