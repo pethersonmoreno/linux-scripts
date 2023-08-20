@@ -5,13 +5,16 @@ function pglab-project-raw-list-by-group-in-page () {
     local per_page="$3"
     local page="$4"
     local groupPath="$(pglab-get-number-or-url-encoded "$groupParam")"
+    local requestUrl=""
+    local listProjectsPage=""
+    local exitCode=""
     # Try get projects in the group in the page
-    local requestUrl="https://gitlab.com/api/v4/groups/${groupPath}/projects?with_shared=false&per_page=$per_page&page=$page"
-    local listProjectsPage=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
+    requestUrl="https://gitlab.com/api/v4/groups/${groupPath}/projects?with_shared=false&per_page=$per_page&page=$page"
+    listProjectsPage=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
     # If failed try get projects in group
-    local exitCode="$?"
+    exitCode="$?"
     if [ $exitCode -ne 0 ]; then
-        echo -e "Error: failed request to get projects in group"
+        >&2 echo -e "Error: failed request to get projects in group"
         return "$exitCode"
     fi
 

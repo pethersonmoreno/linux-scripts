@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 function pglab-project () {
+    local HELP=""
     if [[ "$1" == "help" ]]; then
         HELP="true"
     else

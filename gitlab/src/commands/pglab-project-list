@@ -15,6 +15,7 @@ function pglab-project-list () {
     local USER_PARAM=""
     local NAMESPACE_PARAM=""
     local isRecursive=false
+    local HELP=""
     if [[ "$1" == "help" ]]; then
         HELP="true"
     else

@@ -5,13 +5,15 @@ function pglab-project-raw-list-by-user-in-page () {
     local per_page="$3"
     local page="$4"
     local userPath="$(pglab-get-number-or-url-encoded "$userParam")"
+    local requestUrl=""
+    local listProjectsPage=""
     # Try get projects in the user in the page
-    local requestUrl="https://gitlab.com/api/v4/users/${userPath}/projects?per_page=$per_page&page=$page"
-    local listProjectsPage=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
-    if [ $? -ne 0 ]; then
-        exitCode=$?
-        echo -e "Error: failed request to get projects in user"
-        return $exitCode
+    requestUrl="https://gitlab.com/api/v4/users/${userPath}/projects?per_page=$per_page&page=$page"
+    listProjectsPage=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
+    exitCode=$?
+    if [ $exitCode -ne 0 ]; then
+        >&2 echo -e "Error: failed request to get projects in user"
+        return "$exitCode"
     fi
 
     echo "$listProjectsPage" | jq .

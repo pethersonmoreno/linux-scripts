@@ -29,14 +29,14 @@ function check-dependencies-parameters () {
     fi
     errorMessages=$(getErrorMessages)
     if [ "$errorMessages" != "" ]; then
-        echo
-        pglab-raw-usage "$USAGE_HAS_COMMAND" "$USAGE_HAS_SUBCOMMAND"
+        >&2 echo
+        pglab-raw-usage "$USAGE_HAS_COMMAND" "$USAGE_HAS_SUBCOMMAND" | >&2 cat
         if [ $? -ne 0 ]; then
             return $?
         fi
-        echo
-        echo -e "$commandEntrypoint: errors:\n$(echo -e "$errorMessages" | sed -E "s/^/ - /g")"
-        echo
+        >&2 echo
+        >&2 echo -e "$commandEntrypoint: errors:\n$(echo -e "$errorMessages" | sed -E "s/^/ - /g")"
+        >&2 echo
         return 1
     fi
 }

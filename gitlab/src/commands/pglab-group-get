@@ -3,11 +3,13 @@ function pglab-group-raw-get () {
     local gitlabToken="$1"
     local groupParam="$2"
     local groupPath="$(pglab-get-number-or-url-encoded "$groupParam")"
+    local GROUP_JSON=""
+    local exitCode=""
     # Get group
-    local GROUP_JSON=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "https://gitlab.com/api/v4/groups/${groupPath}?with_projects=false")
-    local exitCode="$?"
+    GROUP_JSON=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "https://gitlab.com/api/v4/groups/${groupPath}?with_projects=false")
+    exitCode="$?"
     if [ $exitCode -ne 0 ]; then
-        echo -e "Error: failed request to get group $exitCode"
+        >&2 echo -e "Error: failed request to get group"
         return "$exitCode"
     fi
 
@@ -15,6 +17,7 @@ function pglab-group-raw-get () {
 }
 
 function pglab-group-get () {
+    local HELP=""
     if [[ "$1" == "help" ]]; then
         HELP="true"
     else

@@ -3,17 +3,20 @@ function pglab-project-raw-get () {
     local gitlabToken="$1"
     local projectParam="$2"
     local projectPath="$(pglab-get-number-or-url-encoded "$projectParam")"
+    local PROJECT_JSON=""
+    local exitCode=""
     # Get project
-    local PROJECT_JSON=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "https://gitlab.com/api/v4/projects/${projectPath}")
-    local exitCode="$?"
+    PROJECT_JSON=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "https://gitlab.com/api/v4/projects/${projectPath}")
+    exitCode="$?"
     if [ $exitCode -ne 0 ]; then
-        echo -e "Error: failed request to get project"
+        >&2 echo -e "Error: failed request to get project"
         return "$exitCode"
     fi
 
     echo "$PROJECT_JSON" | jq .
 }
 function pglab-project-get () {
+    local HELP=""
     if [[ "$1" == "help" ]]; then
         HELP="true"
     else
@@ -82,7 +85,7 @@ OPTIONS
 
 EOF
 )" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
-    return 0
+    return $?
 }
 [[ "$PGLAB_IGNORE_SCRIPT_AUTOSTART" != "true" ]] && commandExecAutostart="$(basename "$(readlink -f -- "$0")" | sed -E "s/ /-/g")"
 if [[ "$commandExecAutostart" == "pglab-project-get" ]]; then

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 function pglab () {
-    restartEntrypoint=false
+    local restartEntrypoint=false
+    local HELP=""
     if [[ "$1" == "help" ]]; then
         HELP="true"
     else
