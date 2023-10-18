@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-export COUNT_TESTING=0
 function pglab-project-fill-remote-mirrors () {
     local listProjectsPage="$1"
-    COUNT_TESTING=$((COUNT_TESTING+1))
     if [ "$(echo "$listProjectsPage" | jq length)" -gt 0 ]; then
         listProjectsPageWithRemoteMirrors="[]"
         while IFS=$'\t' read -r projectIndex; do
