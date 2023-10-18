@@ -27,7 +27,7 @@ function pglab-project-container-registry-raw-list-tags-in-page () {
                 return "$exitCode"
             fi
             listProjectContainerRegistryTagsDetailedPage=$(pglab-json-array-join "$listProjectContainerRegistryTagsDetailedPage" "[$tagDetail]")
-        done <<< "$(echo "$listProjectContainerRegistryTagsPage" | jq -r "map([.name])|.[]|@tsv")"
+        done <<< "$(echo "$listProjectContainerRegistryTagsPage" | jq -r "map([.name])|.[]|@tsv" | sed -E "s/\r//g")"
         echo "$listProjectContainerRegistryTagsDetailedPage" | jq .
         return $?
     fi

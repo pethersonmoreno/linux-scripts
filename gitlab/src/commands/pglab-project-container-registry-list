@@ -24,12 +24,12 @@ function pglab-project-container-registry-fill-detailed-tags () {
                     itemContainerRegistryTotalSize=$(($itemContainerRegistryTotalSize + $tagTotalSize))
 
                     containerRegistryTags=$(pglab-json-array-join "$containerRegistryTags" "[$tagDetail]")
-                done <<< "$(echo "$ITEM_CONTAINER_REGISTRY_TAGS" | jq -r '.|keys|map([.|tostring])|.[]|@tsv')"
+                done <<< "$(echo "$ITEM_CONTAINER_REGISTRY_TAGS" | jq -r '.|keys|map([.|tostring])|.[]|@tsv' | sed -E "s/\r//g")"
             fi
             itemContainerRegistry=$( (echo "$itemContainerRegistry" ; echo "$containerRegistryTags") | jq ". + { tags: input }")
             itemContainerRegistry=$(echo "$itemContainerRegistry" | jq ".total_size = ${itemContainerRegistryTotalSize} | .total_size_formatted = \"$(pglab-format-qtd-bytes "$itemContainerRegistryTotalSize" GB)\"")
             listProjectContainerRegistriesPageWithTagsDetailed=$( (echo "$listProjectContainerRegistriesPageWithTagsDetailed" ; echo "$itemContainerRegistry") | jq '. + [input]')
-        done <<< "$(echo "$listProjectContainerRegistriesPage" | jq -r ".|keys|map([.|tostring])|.[]|@tsv")"
+        done <<< "$(echo "$listProjectContainerRegistriesPage" | jq -r ".|keys|map([.|tostring])|.[]|@tsv" | sed -E "s/\r//g")"
         echo "$listProjectContainerRegistriesPageWithTagsDetailed" | jq .
         return $?
     fi
