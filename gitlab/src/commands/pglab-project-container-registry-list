@@ -47,11 +47,13 @@ function pglab-project-container-registry-raw-list-in-page () {
     local requestUrl=""
     local listProjectContainerRegistriesPage=""
     local exitCode=""
+    local additionalCurlParams=""
+    [[ "$PGLAB_CURL_DISABLE_SSL_VERIFICATION" == "true" ]] && additionalCurlParams="${additionalCurlParams} -k"
     requestUrl="https://gitlab.com/api/v4/projects/${projectPath}/registry/repositories?per_page=$per_page&page=$page"
     if [[ "$includeTags" == "true" ]] || [[ "$includeDetailedTags" == "true" ]]; then
         requestUrl="${requestUrl}&tags=true"
     fi
-    listProjectContainerRegistriesPage=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
+    listProjectContainerRegistriesPage=$(curl $additionalCurlParams -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
     exitCode="$?"
     if [ $exitCode -ne 0 ]; then
         >&2 echo -e "Error: failed request to get container registries in a project"

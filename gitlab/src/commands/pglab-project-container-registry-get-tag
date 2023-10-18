@@ -7,8 +7,10 @@ function pglab-project-container-registry-raw-get-tag () {
     local projectPath="$(pglab-get-number-or-url-encoded "$projectParam")"
     local requestDetailUrl=""
     local exitCode=""
+    local additionalCurlParams=""
+    [[ "$PGLAB_CURL_DISABLE_SSL_VERIFICATION" == "true" ]] && additionalCurlParams="${additionalCurlParams} -k"
     requestDetailUrl="https://gitlab.com/api/v4/projects/${projectPath}/registry/repositories/${containerRegistryIdParam}/tags/${tagNameParam}"
-    tagDetail=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestDetailUrl}")
+    tagDetail=$(curl $additionalCurlParams -s -f --header "Authorization: Bearer $gitlabToken" "${requestDetailUrl}")
     exitCode="$?"
     if [ $exitCode -ne 0 ]; then
         >&2 echo -e "Error: failed request to get tag detail in a container repository of a project"

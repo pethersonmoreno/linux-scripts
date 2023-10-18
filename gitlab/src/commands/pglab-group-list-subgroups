@@ -8,9 +8,11 @@ function pglab-group-raw-list-subgroups-in-page () {
     local requestUrl=""
     local listSubgroupsPage=""
     local exitCode=""
+    local additionalCurlParams=""
+    [[ "$PGLAB_CURL_DISABLE_SSL_VERIFICATION" == "true" ]] && additionalCurlParams="${additionalCurlParams} -k"
     # Try get subgroups in the parent group in the page
     requestUrl="https://gitlab.com/api/v4/groups/${parentGroupPath}/subgroups?per_page=$per_page&page=$page"
-    listSubgroupsPage=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
+    listSubgroupsPage=$(curl $additionalCurlParams -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
     # If failed try get subgroups in a parent group
     exitCode="$?"
     if [ $exitCode -ne 0 ]; then

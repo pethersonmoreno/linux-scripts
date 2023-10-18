@@ -10,8 +10,10 @@ function pglab-project-container-registry-raw-list-tags-in-page () {
     local requestUrl=""
     local listProjectContainerRegistryTagsPage=""
     local exitCode=""
+    local additionalCurlParams=""
+    [[ "$PGLAB_CURL_DISABLE_SSL_VERIFICATION" == "true" ]] && additionalCurlParams="${additionalCurlParams} -k"
     requestUrl="https://gitlab.com/api/v4/projects/${projectPath}/registry/repositories/${containerRegistryIdParam}/tags?per_page=$per_page&page=$page"
-    listProjectContainerRegistryTagsPage=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
+    listProjectContainerRegistryTagsPage=$(curl $additionalCurlParams -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
     exitCode="$?"
     if [ $exitCode -ne 0 ]; then
         return "$exitCode"

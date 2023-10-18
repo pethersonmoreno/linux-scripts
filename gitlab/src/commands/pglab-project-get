@@ -5,8 +5,10 @@ function pglab-project-raw-get () {
     local projectPath="$(pglab-get-number-or-url-encoded "$projectParam")"
     local PROJECT_JSON=""
     local exitCode=""
+    local additionalCurlParams=""
+    [[ "$PGLAB_CURL_DISABLE_SSL_VERIFICATION" == "true" ]] && additionalCurlParams="${additionalCurlParams} -k"
     # Get project
-    PROJECT_JSON=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "https://gitlab.com/api/v4/projects/${projectPath}")
+    PROJECT_JSON=$(curl $additionalCurlParams -s -f --header "Authorization: Bearer $gitlabToken" "https://gitlab.com/api/v4/projects/${projectPath}")
     exitCode="$?"
     if [ $exitCode -ne 0 ]; then
         >&2 echo -e "Error: failed request to get project"

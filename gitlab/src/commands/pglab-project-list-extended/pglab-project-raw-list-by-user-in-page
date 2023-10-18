@@ -10,9 +10,11 @@ function pglab-project-raw-list-by-user-in-page () {
     local userPath="$(pglab-get-number-or-url-encoded "$userParam")"
     local requestUrl=""
     local listProjectsPage=""
+    local additionalCurlParams=""
+    [[ "$PGLAB_CURL_DISABLE_SSL_VERIFICATION" == "true" ]] && additionalCurlParams="${additionalCurlParams} -k"
     # Try get projects in the user in the page
     requestUrl="https://gitlab.com/api/v4/users/${userPath}/projects?per_page=$per_page&page=$page"
-    listProjectsPage=$(curl -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
+    listProjectsPage=$(curl $additionalCurlParams -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
     exitCode=$?
     if [ $exitCode -ne 0 ]; then
         >&2 echo -e "Error: failed request to get projects in user"
