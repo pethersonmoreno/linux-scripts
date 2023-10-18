@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+function pglab-project-raw-get-pull-mirror () {
+    local gitlabToken="$1"
+    local projectParam="$2"
+    local projectPath="$(pglab-get-number-or-url-encoded "$projectParam")"
+    local pullMirrorJson=""
+    local exitCode=""
+    local additionalCurlParams=""
+    [[ "$PGLAB_CURL_DISABLE_SSL_VERIFICATION" == "true" ]] && additionalCurlParams="${additionalCurlParams} -k"
+    pullMirrorJson=$(curl $additionalCurlParams -s -f --header "Authorization: Bearer $gitlabToken" "https://gitlab.com/api/v4/projects/${projectPath}/mirror/pull")
+    exitCode="$?"
+    if [ $exitCode -ne 0 ]; then
+        >&2 echo -e "Error: failed request to get project pull mirror"
+        return "$exitCode"
+    fi
+
+    echo "$pullMirrorJson" | jq .
+    return $?
+}
+function pglab-project-fill-pull-mirror () {
+    local gitlabToken="$1"
+    local listProjectsPage="$2"
+    if [ "$(echo "$listProjectsPage" | jq length)" -gt 0 ]; then
+        listProjectsPageWithPullMirror="[]"
+        while IFS=$'\t' read -r projectIndex; do
+            projectItem=$(echo "$listProjectsPage" | jq ".[${projectIndex}]")
+            projectIdItem="$(echo "$projectItem" | jq .id)"
+            hasMirror="$(echo "$projectItem" | jq -r .mirror)"
+
+            if [[ "$hasMirror" == "true" ]]; then
+                pullMirror=$(pglab-project-raw-get-pull-mirror "$gitlabToken" "$projectIdItem")
+                exitCode="$?"
+                if [ $exitCode -ne 0 ]; then
+                    return "$exitCode"
+                fi
+            else
+                pullMirror="null"
+            fi
+
+            projectItem=$( (echo "$projectItem" ; echo "$pullMirror") | jq ". + { pullMirror: input }")
+            listProjectsPageWithPullMirror=$(pglab-json-array-join "$listProjectsPageWithPullMirror" "[$projectItem]")
+        done <<< "$(echo "$listProjectsPage" | jq -r ".|keys|map([.|tostring])|.[]|@tsv" | sed -E "s/\r//g")"
+        echo "$listProjectsPageWithPullMirror" | jq .
+        return $?
+    fi
+    echo "$listProjectsPage"
+    return $?
+}

@@ -6,7 +6,8 @@ function pglab-project-raw-list-by-user () {
     local getContainerRegistryTags="$4"
     local getContainerRegistryDetailedTags="$5"
     local getRemoteMirrors="$6"
-    local per_page="$7"
+    local getPullMirror="$7"
+    local per_page="$8"
     local userPath="$(pglab-get-number-or-url-encoded "$userParam")"
     local listProjects="[]"
     local page=0
@@ -15,7 +16,7 @@ function pglab-project-raw-list-by-user () {
     # Get all projects in the user
     while [ $page_empty != true ]; do
         page=$(($page+1))
-        listProjectsPage=$(pglab-project-raw-list-by-user-in-page "$gitlabToken" "$userParam" "$getContainerRegistries" "$getContainerRegistryTags" "$getContainerRegistryDetailedTags" "$getRemoteMirrors" "$per_page" "$page")
+        listProjectsPage=$(pglab-project-raw-list-by-user-in-page "$gitlabToken" "$userParam" "$getContainerRegistries" "$getContainerRegistryTags" "$getContainerRegistryDetailedTags" "$getRemoteMirrors" "$getPullMirror" "$per_page" "$page")
         exitCode=$?
         if [ $exitCode -ne 0 ]; then
             return $exitCode

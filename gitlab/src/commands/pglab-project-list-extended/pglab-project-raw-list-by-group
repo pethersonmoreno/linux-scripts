@@ -6,7 +6,8 @@ function pglab-project-raw-list-by-group () {
     local getContainerRegistryTags="$4"
     local getContainerRegistryDetailedTags="$5"
     local getRemoteMirrors="$6"
-    local per_page="$7"
+    local getPullMirror="$7"
+    local per_page="$8"
     local listProjects="[]"
     local page=0
     local page_empty=false
@@ -14,7 +15,7 @@ function pglab-project-raw-list-by-group () {
     # Get all projects in the group
     while [ $page_empty != true ]; do
         page=$(($page+1))
-        listProjectsPage=$(pglab-project-raw-list-by-group-in-page "$gitlabToken" "$groupParam" "$getContainerRegistries" "$getContainerRegistryTags" "$getContainerRegistryDetailedTags" "$getRemoteMirrors" "$per_page" "$page")
+        listProjectsPage=$(pglab-project-raw-list-by-group-in-page "$gitlabToken" "$groupParam" "$getContainerRegistries" "$getContainerRegistryTags" "$getContainerRegistryDetailedTags" "$getRemoteMirrors" "$getPullMirror" "$per_page" "$page")
         exitCode=$?
         if [ $exitCode -ne 0 ]; then
             return $exitCode

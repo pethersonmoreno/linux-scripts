@@ -6,8 +6,9 @@ function pglab-project-raw-list-by-group-in-page () {
     local getContainerRegistryTags="$4"
     local getContainerRegistryDetailedTags="$5"
     local getRemoteMirrors="$6"
-    local per_page="$7"
-    local page="$8"
+    local getPullMirror="$7"
+    local per_page="$8"
+    local page="$9"
     local groupPath="$(pglab-get-number-or-url-encoded "$groupParam")"
     local requestUrl=""
     local listProjectsPage=""
@@ -34,6 +35,14 @@ function pglab-project-raw-list-by-group-in-page () {
 
     if [[ "$getRemoteMirrors" == "true" ]]; then
         listProjectsPage="$(pglab-project-fill-remote-mirrors "$listProjectsPage")"
+        exitCode="$?"
+        if [ $exitCode -ne 0 ]; then
+            return "$exitCode"
+        fi
+    fi
+
+    if [[ "$getPullMirror" == "true" ]]; then
+        listProjectsPage="$(pglab-project-fill-pull-mirror "$gitlabToken" "$listProjectsPage")"
         exitCode="$?"
         if [ $exitCode -ne 0 ]; then
             return "$exitCode"
