@@ -5,7 +5,8 @@ function pglab-project-raw-list-by-group-recursive () {
     local getContainerRegistries="$3"
     local getContainerRegistryTags="$4"
     local getContainerRegistryDetailedTags="$5"
-    local per_page="$6"
+    local getRemoteMirrors="$6"
+    local per_page="$7"
     local groupPath="$(pglab-get-number-or-url-encoded "$groupParam")"
     local pendingGroups="$groupParam"
     local listProjects="[]"
@@ -18,7 +19,7 @@ function pglab-project-raw-list-by-group-recursive () {
 
         pendingGroups=$(echo "$pendingGroups" | sed -E "s/^[^ ]+ ?//")
 
-        groupItemProjects=$(pglab-project-raw-list-by-group "$gitlabToken" "$groupItem" "$getContainerRegistries" "$getContainerRegistryTags" "$getContainerRegistryDetailedTags" "$per_page")
+        groupItemProjects=$(pglab-project-raw-list-by-group "$gitlabToken" "$groupItem" "$getContainerRegistries" "$getContainerRegistryTags" "$getContainerRegistryDetailedTags" "$getRemoteMirrors" "$per_page")
         exitCode=$?
         if [ $exitCode -ne 0 ]; then
             return $exitCode

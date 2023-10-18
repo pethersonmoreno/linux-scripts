@@ -19,6 +19,7 @@ function pglab-project-list () {
     local getContainerRegistries=""
     local getContainerRegistryTags=""
     local getContainerRegistryDetailedTags=""
+    local getRemoteMirrors=""
     if [[ "$1" == "help" ]]; then
         HELP="true"
     else
@@ -33,6 +34,7 @@ function pglab-project-list () {
                 --container-registries) getContainerRegistries=true; shift 1 ;;
                 --container-registries-tags) getContainerRegistryTags=true; shift 1 ;;
                 --container-registries-detailed-tags) getContainerRegistryDetailedTags=true; shift 1 ;;
+                --remote-mirrors) getRemoteMirrors=true; shift 1 ;;
                 --recursive) isRecursive=true; shift 1 ;;
                 --per-page=*) PER_PAGE="${1#*=}"; shift 1 ;;
                 --per-page) PER_PAGE="$2"; shift 2 ;;
@@ -93,20 +95,20 @@ function pglab-project-list () {
         fi
         if [ ! -z "$PAGE" ]; then
             if [[ "$isGroup" == "true" ]]; then
-                pglab-project-raw-list-by-group-in-page "$GITLAB_TOKEN" "$groupParamToUse" "$getContainerRegistries" "$getContainerRegistryTags" "$getContainerRegistryDetailedTags" "$PER_PAGE" "$PAGE"
+                pglab-project-raw-list-by-group-in-page "$GITLAB_TOKEN" "$groupParamToUse" "$getContainerRegistries" "$getContainerRegistryTags" "$getContainerRegistryDetailedTags" "$getRemoteMirrors" "$PER_PAGE" "$PAGE"
             else
-                pglab-project-raw-list-by-user-in-page "$GITLAB_TOKEN" "$userParamToUse" "$getContainerRegistries" "$getContainerRegistryTags" "$getContainerRegistryDetailedTags" "$PER_PAGE" "$PAGE"
+                pglab-project-raw-list-by-user-in-page "$GITLAB_TOKEN" "$userParamToUse" "$getContainerRegistries" "$getContainerRegistryTags" "$getContainerRegistryDetailedTags" "$getRemoteMirrors" "$PER_PAGE" "$PAGE"
             fi
             return $?
         fi
         if [[ "$isGroup" == "true" ]]; then
             if [[ "$isRecursive" == "true" ]]; then
-                pglab-project-raw-list-by-group-recursive "$GITLAB_TOKEN" "$groupParamToUse" "$getContainerRegistries" "$getContainerRegistryTags" "$getContainerRegistryDetailedTags" "$PER_PAGE"
+                pglab-project-raw-list-by-group-recursive "$GITLAB_TOKEN" "$groupParamToUse" "$getContainerRegistries" "$getContainerRegistryTags" "$getContainerRegistryDetailedTags" "$getRemoteMirrors" "$PER_PAGE"
             else
-                pglab-project-raw-list-by-group "$GITLAB_TOKEN" "$groupParamToUse" "$getContainerRegistries" "$getContainerRegistryTags" "$getContainerRegistryDetailedTags" "$PER_PAGE"
+                pglab-project-raw-list-by-group "$GITLAB_TOKEN" "$groupParamToUse" "$getContainerRegistries" "$getContainerRegistryTags" "$getContainerRegistryDetailedTags" "$getRemoteMirrors" "$PER_PAGE"
             fi
         else
-            pglab-project-raw-list-by-user "$GITLAB_TOKEN" "$userParamToUse" "$getContainerRegistries" "$getContainerRegistryTags" "$getContainerRegistryDetailedTags" "$PER_PAGE"
+            pglab-project-raw-list-by-user "$GITLAB_TOKEN" "$userParamToUse" "$getContainerRegistries" "$getContainerRegistryTags" "$getContainerRegistryDetailedTags" "$getRemoteMirrors" "$PER_PAGE"
         fi
         return $?
     fi

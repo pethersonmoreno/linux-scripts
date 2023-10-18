@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+export COUNT_TESTING=0
+function pglab-project-fill-remote-mirrors () {
+    local listProjectsPage="$1"
+    COUNT_TESTING=$((COUNT_TESTING+1))
+    if [ "$(echo "$listProjectsPage" | jq length)" -gt 0 ]; then
+        listProjectsPageWithRemoteMirrors="[]"
+        while IFS=$'\t' read -r projectIndex; do
+            projectItem=$(echo "$listProjectsPage" | jq ".[${projectIndex}]")
+            projectIdItem="$(echo "$projectItem" | jq .id)"
+
+            remoteMirrors=$(pglab --restart-entrypoint project remote-mirror list --project "$projectIdItem")
+            exitCode="$?"
+            if [ $exitCode -ne 0 ]; then
+                return "$exitCode"
+            fi
+
+            projectItem=$( (echo "$projectItem" ; echo "$remoteMirrors") | jq ". + { remoteMirrors: input }")
+            listProjectsPageWithRemoteMirrors=$(pglab-json-array-join "$listProjectsPageWithRemoteMirrors" "[$projectItem]")
+        done <<< "$(echo "$listProjectsPage" | jq -r ".|keys|map([.|tostring])|.[]|@tsv" | sed -E "s/\r//g")"
+        echo "$listProjectsPageWithRemoteMirrors" | jq .
+        return $?
+    fi
+    echo "$listProjectsPage"
+    return $?
+}

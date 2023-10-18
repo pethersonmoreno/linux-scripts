@@ -5,8 +5,9 @@ function pglab-project-raw-list-by-user-in-page () {
     local getContainerRegistries="$3"
     local getContainerRegistryTags="$4"
     local getContainerRegistryDetailedTags="$5"
-    local per_page="$6"
-    local page="$7"
+    local getRemoteMirrors="$6"
+    local per_page="$7"
+    local page="$8"
     local userPath="$(pglab-get-number-or-url-encoded "$userParam")"
     local requestUrl=""
     local listProjectsPage=""
@@ -23,6 +24,14 @@ function pglab-project-raw-list-by-user-in-page () {
 
     if [[ "$getContainerRegistries" == "true" ]]; then
         listProjectsPage="$(pglab-project-fill-container-registries "$listProjectsPage" "$getContainerRegistryTags" "$getContainerRegistryDetailedTags")"
+        exitCode="$?"
+        if [ $exitCode -ne 0 ]; then
+            return "$exitCode"
+        fi
+    fi
+
+    if [[ "$getRemoteMirrors" == "true" ]]; then
+        listProjectsPage="$(pglab-project-fill-remote-mirrors "$listProjectsPage")"
         exitCode="$?"
         if [ $exitCode -ne 0 ]; then
             return "$exitCode"

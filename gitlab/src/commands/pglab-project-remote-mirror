@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
-function pglab-project () {
+function pglab-project-remote-mirror () {
     local HELP=""
     if [[ "$1" == "help" ]]; then
         HELP="true"
     else
         while true; do
             case "$1" in
-                get|list|container-registry|remote-mirror) command=$1; shift 1; break ;;
+                list) command=$1; shift 1; break ;;
                 --) addErrorMessage "Invalid option '$1'"; shift ;;
                 -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
                 * )
                     [ -z ${1+x} ] && break
-                    addErrorMessage "Invalid command choice '$1', valid choices are: get, list, container-registry, remote-mirror"
+                    addErrorMessage "Invalid command choice '$1', valid choices are: list"
                     break
                 ;;
             esac
         done
     fi
     if [[ "$HELP" == "true" ]]; then
-        pglab-project-help
+        pglab-project-remote-mirror-help
         return $?
     fi
     if [[ "$USAGE" == "true" ]]; then
@@ -47,7 +47,7 @@ function pglab-project () {
     >&2 echo
 }
 
-function pglab-project-help () {
+function pglab-project-remote-mirror-help () {
     echo "$(cat <<EOF
 _COMMAND_ENTRYPOINT_()
 
@@ -77,7 +77,6 @@ GLOBAL OPTIONS
        display an usage help message and exit
 
 AVAILABLE COMMANDS
-       o get
        o list
 
 EOF
@@ -85,7 +84,7 @@ EOF
     return $?
 }
 [[ "$PGLAB_IGNORE_SCRIPT_AUTOSTART" != "true" ]] && commandExecAutostart="$(basename "$(readlink -f -- "$0")" | sed -E "s/ /-/g")"
-if [[ "$commandExecAutostart" == "pglab-project" ]]; then
+if [[ "$commandExecAutostart" == "pglab-project-remote-mirror" ]]; then
     [[ -L "$0" ]] \
         && SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )") \
         || SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"

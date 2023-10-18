@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+function pglab-project-remote-mirror-raw-list-in-page () {
+    local gitlabToken="$1"
+    local projectParam="$2"
+    local per_page="$3"
+    local page="$4"
+    local projectPath="$(pglab-get-number-or-url-encoded "$projectParam")"
+    local requestUrl=""
+    local listProjectRemoteMirrorsPage=""
+    local exitCode=""
+    local additionalCurlParams=""
+    [[ "$PGLAB_CURL_DISABLE_SSL_VERIFICATION" == "true" ]] && additionalCurlParams="${additionalCurlParams} -k"
+    requestUrl="https://gitlab.com/api/v4/projects/${projectPath}/remote_mirrors?per_page=$per_page&page=$page"
+    listProjectRemoteMirrorsPage=$(curl $additionalCurlParams -s -f --header "Authorization: Bearer $gitlabToken" "${requestUrl}")
+    exitCode="$?"
+    if [ $exitCode -ne 0 ]; then
+        >&2 echo -e "Error: failed request to get remote mirrors in a project"
+        return "$exitCode"
+    fi
+
+    echo "$listProjectRemoteMirrorsPage" | jq .
+    return $?
+}
+function pglab-project-remote-mirror-raw-list () {
+    local gitlabToken="$1"
+    local projectParam="$2"
+    local per_page="$3"
+    local listProjectRemoteMirrors="[]"
+    local page=0
+    local page_empty=false
+    local listProjectRemoteMirrorsPage=""
+    while [ $page_empty != true ]; do
+        page=$(($page+1))
+        listProjectRemoteMirrorsPage=$(pglab-project-remote-mirror-raw-list-in-page "$gitlabToken" "$projectParam" "$per_page" "$page")
+        exitCode=$?
+        if [ $exitCode -ne 0 ]; then
+            return $exitCode
+        fi
+        listProjectRemoteMirrors=$(pglab-json-array-join "$listProjectRemoteMirrors" "$listProjectRemoteMirrorsPage")
+        page_empty=$(pglab-json-array-is-empty "$listProjectRemoteMirrorsPage")
+    done
+
+    echo "$listProjectRemoteMirrors" | jq .
+    return $?
+}
+
+function pglab-project-remote-mirror-list () {
+    local PER_PAGE=1000
+    local PAGE=""
+    local HELP=""
+    local PROJECT_PARAM=""
+    if [[ "$1" == "help" ]]; then
+        HELP="true"
+    else
+        while true; do
+            case "$1" in
+                --project=*) PROJECT_PARAM="${1#*=}"; shift 1 ;;
+                --project) PROJECT_PARAM="$2"; shift 2 ;;
+                --per-page=*) PER_PAGE="${1#*=}"; shift 1 ;;
+                --per-page) PER_PAGE="$2"; shift 2 ;;
+                --page=*) PAGE="${1#*=}"; shift 1 ;;
+                --page) PAGE="$2"; shift 2 ;;
+                --) addErrorMessage "Invalid option '$1'"; shift ;;
+                -*|--*) addErrorMessage "Invalid option '$1'"; shift ;;
+                * )
+                    [ -z ${1+x} ] && break
+                    addErrorMessage "Invalid parameter with value '$1'"
+                    shift 1
+                ;;
+            esac
+        done
+    fi
+    function verifyParameters () {
+        if [ -z "${PROJECT_PARAM}" ]; then
+            addErrorMessage "Parameter project (--project) is required"
+        fi
+    }
+    if [[ "$HELP" == "true" ]]; then
+        pglab-project-remote-mirror-list-help
+        return $?
+    fi
+    if [[ "$USAGE" == "true" ]]; then
+        >&2 pglab-usage false false
+        return $?
+    fi
+    check-dependencies-parameters verifyParameters false false
+    exitCode=$?
+    if [ $exitCode -ne 0 ]; then
+        return $exitCode
+    fi
+
+    if [ ! -z "$PAGE" ]; then
+        pglab-project-remote-mirror-raw-list-in-page "$GITLAB_TOKEN" "$PROJECT_PARAM" "$PER_PAGE" "$PAGE"
+        return $?
+    fi
+    pglab-project-remote-mirror-raw-list "$GITLAB_TOKEN" "$PROJECT_PARAM" "$PER_PAGE"
+    return $?
+}
+
+function pglab-project-remote-mirror-list-help () {
+    echo "$(cat <<EOF
+_COMMAND_ENTRYPOINT_()
+
+NAME
+       _COMMAND_ENTRYPOINT_ -
+
+DESCRIPTION
+       Get a list of remote mirrors in a project
+
+SYNOPSIS
+            _COMMAND_ENTRYPOINT_
+          [help]
+          --project <value>
+
+HELP COMMAND
+       help
+
+       display this help and exit
+
+OPTIONS
+       --project (string|number)
+          The project to get remote mirror list.
+
+          This parameter value is the project ID if it is a number, or if
+          it is not a number this parameter value is the project full path.
+
+EOF
+)" | sed -E "s#_COMMAND_ENTRYPOINT_#$commandEntrypoint#g" | less
+    return $?
+}
+[[ "$PGLAB_IGNORE_SCRIPT_AUTOSTART" != "true" ]] && commandExecAutostart="$(basename "$(readlink -f -- "$0")" | sed -E "s/ /-/g")"
+if [[ "$commandExecAutostart" == "pglab-project-remote-mirror-list" ]]; then
+    [[ -L "$0" ]] \
+        && SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )") \
+        || SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
+    source "${SCRIPT_DIR}/../common/all"
+    $commandExecAutostart $@
+    exit $?
+fi
