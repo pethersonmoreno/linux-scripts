@@ -1,4 +1,5 @@
 #!/bin/bash
+sudo pacman -S debugedit fakeroot
 PACKAGE_NAME=visual-studio-code-bin
 TMP_DIRECTORY=/tmp
 if [ ! -d "$TMP_DIRECTORY" ]; then
@@ -6,15 +7,14 @@ if [ ! -d "$TMP_DIRECTORY" ]; then
   exit 1
 fi
 cd $TMP_DIRECTORY
-curl "https://aur.archlinux.org/cgit/aur.git/snapshot/${PACKAGE_NAME}.tar.gz" --output "${PACKAGE_NAME}.tar.gz"
-tar -zxvf "${PACKAGE_NAME}.tar.gz"
+rm -rf "${PACKAGE_NAME}"
+git clone https://aur.archlinux.org/${PACKAGE_NAME}.git "${PACKAGE_NAME}"
 cd "${PACKAGE_NAME}"
+git checkout 2535441808103a8ba9004426dbabab37167261e3 # 1.32.3
 sed -E "s/i686/pentium4/g" -i PKGBUILD
-sed -E "s/\s*install -Dm 644 .+\\/bash\\/code.+//g" -i PKGBUILD
-sed -E "s/\s*install -Dm 644 .+\\/zsh\\/_code.+//g" -i PKGBUILD
+sed -E "s/https:\/\/vscode-update\.azurewebsites\.net\//https:\/\/update.code.visualstudio.com\//g" -i PKGBUILD
 makepkg -s
 PACKAGE_INSTALL=`ls | grep -E '\.tar\.xz|\.tar\.zst' | grep -v orig`
 sudo pacman -U $PACKAGE_INSTALL
 cd ..
 rm -rf "${PACKAGE_NAME}"
-rm "${PACKAGE_NAME}.tar.gz"
