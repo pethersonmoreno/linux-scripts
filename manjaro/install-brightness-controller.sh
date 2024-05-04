@@ -1,5 +1,5 @@
 #!/bin/sh
-sudo pacman -S python-qtpy patchelf pyside2 xorg-xrandr python-cx_freeze qt5-charts qt5-xmlpatterns qt5-speech qt5-x11extras qt5-tools qt5-svg qt5-sensors qt5-remoteobjects qt5-websockets qt5-datavis3d qt5-3d qt5-script qt5-webengine
+sudo pacman -S python-qtpy patchelf pyside2 xorg-xrandr python-cx_freeze qt5-charts qt5-xmlpatterns qt5-speech qt5-x11extras qt5-tools qt5-svg qt5-sensors qt5-remoteobjects qt5-websockets qt5-datavis3d qt5-3d qt5-script qt5-webengine python-pyqt5
 PACKAGE_NAME=brightness-controller
 TMP_DIRECTORY=/tmp
 if [ $# -gt 1 ]; then
@@ -20,6 +20,7 @@ cd /opt/${PACKAGE_NAME}
 python init.py
 EOF
 sudo chmod +x /opt/${PACKAGE_NAME}/${PACKAGE_NAME}
+sudo chown "$(id -u):$(id -g)" /opt/${PACKAGE_NAME}/${PACKAGE_NAME}
 cat <<EOF | sudo tee /opt/${PACKAGE_NAME}/${PACKAGE_NAME}.desktop 2&>/dev/null
 [Desktop Entry]
 Encoding=UTF-8
@@ -32,10 +33,11 @@ Terminal=false
 StartupNotify=false
 Categories=Application;
 EOF
+sudo chown "$(id -u):$(id -g)" /opt/${PACKAGE_NAME}/${PACKAGE_NAME}.desktop
 
 sudo ln -s /opt/${PACKAGE_NAME}/icons/brightness-controller.svg /usr/share/pixmaps/brightness-controller.svg
 sudo ln -s /opt/${PACKAGE_NAME}/${PACKAGE_NAME} /usr/local/bin/${PACKAGE_NAME}
-sudo cp /opt/${PACKAGE_NAME}/${PACKAGE_NAME}.desktop /usr/share/applications/${PACKAGE_NAME}.desktop
+sudo cp -a /opt/${PACKAGE_NAME}/${PACKAGE_NAME}.desktop /usr/share/applications/${PACKAGE_NAME}.desktop
 
 cd $TMP_DIRECTORY
 rm -rf "${PACKAGE_NAME}"
