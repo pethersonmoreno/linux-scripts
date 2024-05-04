@@ -39,6 +39,16 @@ xfconf-query -c xfce4-keyboard-shortcuts -p "/xfwm4/custom/<Primary><Alt>KP_9" -
 xfconf-query -c xfce4-keyboard-shortcuts -p "/xfwm4/custom/<Alt>Insert" -r
 xfconf-query -c xfce4-keyboard-shortcuts -p "/xfwm4/custom/<Alt>Delete" -r
 
+echo "Config xcape to menu start with whiskermenu"
+xfconf-query -c xfce4-keyboard-shortcuts -p "/commands/custom/<Alt>F1" -n -t "string" -s "xfce4-popup-whiskermenu"
+echo "Installing xcape"
+sudo pacman -S xcape
+echo "Configuring xcape to start on login to enable menu start with Super key"
+cp -a xcape.desktop ~/.config/autostart/
+
+
+
+
 
 # Example to delete a property
 # xfconf-query -c xfce4-keyboard-shortcuts -p "/xfwm4/default/<Shift><Control><Alt>Down" -r
