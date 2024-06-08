@@ -1,6 +1,6 @@
 #!/bin/bash
 # version got in the creation of this script
-VERSION=`curl -s https://cloud.google.com/sdk/docs/release-notes | perl -pe 'BEGIN{undef $/;} s/^.*?devsite-article-body clearfix//sg' | perl -pe 'BEGIN{undef $/;} s/^.*?<h2//sg' | head -n 1 | sed -e 's/^[^>]\+>\s*//' | sed -e 's/^\([0-3\.]\+\).\+/\1/'`
+VERSION=`curl -s https://cloud.google.com/sdk/docs/release-notes | perl -pe 'BEGIN{undef $/;} s/^.*?devsite-article-body clearfix//sg' | perl -pe 'BEGIN{undef $/;} s/^.*?<h2//sg' | head -n 1 | sed -e 's/^[^>]\+>\s*//' | sed -e 's/^\([0-3\.]\+\).\+/\1/' | sed -E 's#^([^ ]+) .+#\1#g'`
 echo "Google Cloud SDK last version is ${VERSION}"
 ALREADY_EXIST=`type gcloud >/dev/null 2>&1 && echo 1`
 if [ "$ALREADY_EXIST" = "1" ]; then
