@@ -1,2 +1,2 @@
 #!/bin/sh
-apk update
+sudo apk update

@@ -1,2 +1,2 @@
 #!/bin/sh
-apk upgrade --available
+sudo apk upgrade --available
