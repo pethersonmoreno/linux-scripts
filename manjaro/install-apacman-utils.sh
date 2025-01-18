@@ -15,7 +15,7 @@ tar -zxvf "${PACKAGE_NAME}.tar.gz"
 cd "${PACKAGE_NAME}"
 sed -i '/^makedepends/d' PKGBUILD
 makepkg -s
-PACKAGE_INSTALL=`ls | grep .tar.xz | grep -v orig`
+PACKAGE_INSTALL=`ls | grep -E '\.tar\.xz|\.tar\.zst' | grep -v orig`
 sudo pacman -U $PACKAGE_INSTALL
 cd ..
 rm -rf "${PACKAGE_NAME}"
