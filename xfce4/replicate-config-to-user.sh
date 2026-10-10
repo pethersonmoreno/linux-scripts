@@ -33,6 +33,9 @@ if ! id "$DST_USER" &>/dev/null; then
     exit 1
 fi
 
+# Recupera o ID do grupo principal (GID) do usuário de destino de forma dinâmica
+DST_GID=$(id -g "$DST_USER")
+
 # Definição dos caminhos das pastas de configuração
 SRC_XFCE_DIR="/home/$SRC_USER/.config/xfce4"
 DST_CONFIG_DIR="/home/$DST_USER/.config"
@@ -66,7 +69,7 @@ cp -r "$SRC_XFCE_DIR" "$DST_CONFIG_DIR/"
 
 # 9. Ajusta as permissões de dono e grupo para o usuário de destino
 echo "🔒 Ajustando permissões para o usuário '$DST_USER'..."
-chown -R "$DST_USER:$DST_USER" "$DST_XFCE_DIR"
+chown -R "$DST_USER:$DST_GID" "$DST_XFCE_DIR"
 
 echo "✅ Concluído com sucesso!"
 echo "💡 Nota: Se o usuário '$DST_USER' estiver logado, ele precisará reiniciar o XFCE ou rodar 'xfce4-panel --restart'."
