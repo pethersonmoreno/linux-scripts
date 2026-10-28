@@ -11,6 +11,7 @@ function url {
     echo -n "$(echo -n "$url" | sed -E "s#\\\$\{OLLAMA_VERSION\}#${OLLAMA_VERSION}#g")"
     return 0
 }
+
 function checksum() {
     local file=$1
     local hash=$2
@@ -24,7 +25,7 @@ function checksum() {
     if [ "sha256:$(curl -sSL "${url}" | tee "${TEMP_DIR}/${file}" | sha256sum | awk '{print $1}')" = "${hash}" ]; then
         return 0
     else
-        echo "❌ ERRO: O hash SHA256 do arquivo '${file}' não bate! Parando instalação." >&2
+        echo "❌ ERROR: The SHA256 hash for the file '${file}' does not match! Stopping installation." >&2
         return 1
     fi
 }
@@ -39,13 +40,13 @@ function checksum-from-release() {
 
     hash=$(curl -sSL "${url_sha256sum_txt}" | tee "${TEMP_DIR}/sha256sum.txt" | grep -E "\s+\./${file}" | head -n 1 | sed -E 's/\s.+//g')
     if [ $? -ne 0 ] || [ -z "$hash" ]; then
-        echo "❌ ERRO: O hash SHA256 do arquivo '${file}' não encontrado no 'sha256sum.txt' da release! Parando instalação." >&2
+        echo "❌ ERROR: The SHA256 hash for the file '${file}' was not found in the release's 'sha256sum.txt'! Stopping installation." >&2
         return 1
     fi
     if [ "$(curl -sSL "${url}" | tee "${TEMP_DIR}/${file}" | sha256sum | awk '{print $1}')" = "${hash}" ]; then
         return 0
     else
-        echo "❌ ERRO: O hash SHA256 do arquivo '${file}' não bate! Parando instalação." >&2
+        echo "❌ ERROR: The SHA256 hash for the file '${file}' does not match! Stopping installation." >&2
         return 1
     fi
 }
